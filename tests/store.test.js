@@ -1,0 +1,111 @@
+import assert from "node:assert/strict";
+import { afterEach, beforeEach, test } from "node:test";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { HoleCountStore } from "../server/store.js";
+
+let dataDir;
+let store;
+
+beforeEach(async () => {
+  dataDir = await mkdtemp(path.join(os.tmpdir(), "guitar-hole-count-store-"));
+  store = new HoleCountStore({ dataDir });
+});
+
+afterEach(async () => {
+  await rm(dataDir, { recursive: true, force: true });
+});
+
+test("a morning count replaces the snapshot and resets breakout progress", async () => {
+  await store.setMorningCount([
+    { label: "Fender", count: 17 },
+    { label: "Gibson", count: 9 },
+    { label: "Ibanez", count: 12 },
+  ]);
+  await store.breakOut([{ label: "Fender", quantity: 6 }]);
+  await store.setMorningCount([
+    { label: "Fender", count: 4 },
+    { label: "Gretsch", count: 2 },
+  ]);
+
+  const snapshot = await store.snapshot();
+  assert.deepEqual(snapshot.rows, [
+    { label: "Fender", starting: 4, remaining: 4, brokenOut: 0 },
+    { label: "Gretsch", starting: 2, remaining: 2, brokenOut: 0 },
+  ]);
+  assert.deepEqual(snapshot.totals, { starting: 6, remaining: 6, brokenOut: 0 });
+});
+
+test("one breakout call updates multiple categories atomically", async () => {
+  await store.setMorningCount([
+    { label: "Fender", count: 17 },
+    { label: "Ibanez", count: 12 },
+  ]);
+  await store.breakOut([
+    { label: "fender", quantity: 3 },
+    { label: "Ibanez", quantity: 2 },
+  ]);
+
+  const snapshot = await store.snapshot();
+  assert.equal(snapshot.rows[0].remaining, 14);
+  assert.equal(snapshot.rows[1].remaining, 10);
+  assert.equal(snapshot.totals.remaining, 24);
+  assert.equal(snapshot.totals.brokenOut, 5);
+});
+
+test("a failing breakout batch changes no category and never goes below zero", async () => {
+  await store.setMorningCount([
+    { label: "Fender", count: 2 },
+    { label: "Ibanez", count: 1 },
+  ]);
+
+  await assert.rejects(
+    () =>
+      store.breakOut([
+        { label: "Fender", quantity: 1 },
+        { label: "Ibanez", quantity: 2 },
+      ]),
+    /only has 1 hole remaining/
+  );
+
+  assert.deepEqual((await store.snapshot()).totals, {
+    starting: 3,
+    remaining: 3,
+    brokenOut: 0,
+  });
+});
+
+test("corrections put holes back but cannot exceed the morning count", async () => {
+  await store.setMorningCount([{ label: "Fender", count: 2 }]);
+  await store.breakOut([{ label: "Fender", quantity: 1 }]);
+  await store.adjustBalance([{ label: "fender", delta: 1 }]);
+  assert.equal((await store.snapshot()).rows[0].remaining, 2);
+  await assert.rejects(
+    () => store.adjustBalance([{ label: "Fender", delta: 1 }]),
+    /between 0 and its morning count/
+  );
+});
+
+test("the current snapshot survives a fresh store instance", async () => {
+  await store.setMorningCount([{ label: "Fender", count: 5 }]);
+  await store.breakOut([{ label: "Fender", quantity: 2 }]);
+
+  const restartedStore = new HoleCountStore({ dataDir });
+  const snapshot = await restartedStore.snapshot();
+  assert.equal(snapshot.rows[0].remaining, 3);
+
+  const persisted = JSON.parse(await readFile(path.join(dataDir, "state.json"), "utf8"));
+  assert.deepEqual(persisted.counts.Fender, { starting: 5, remaining: 3 });
+});
+
+test("duplicate labels are rejected case-insensitively", async () => {
+  await assert.rejects(
+    () =>
+      store.setMorningCount([
+        { label: "Fender", count: 1 },
+        { label: " fender ", count: 2 },
+      ]),
+    /Duplicate label/
+  );
+});
