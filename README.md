@@ -56,6 +56,16 @@ ChatGPT needs a public HTTPS endpoint for local development. Start the server, t
 
 Copy the generated `https://…trycloudflare.com` URL and append `/mcp`.
 
+### Keep the prototype running on this Mac
+
+For day-to-day use, the repository includes project-specific macOS LaunchAgents for both the MCP server and Cloudflare Tunnel. The installer copies a runnable bundle to `~/Library/Application Support/GuitarHoleCount`, outside macOS's protected Documents area. The agents start at login and macOS restarts either process if it exits:
+
+```bash
+./scripts/deploy-macos-launch-agents.sh
+```
+
+Runtime logs are written under `~/Library/Application Support/GuitarHoleCount/data/`. Run the installer again after changing server or widget code. An accountless Cloudflare quick tunnel keeps the same URL while that tunnel process stays alive, but a Mac restart can produce a new URL. A named tunnel or normal HTTPS host is required for a permanently stable endpoint.
+
 In ChatGPT:
 
 1. Open **Settings → Security and login** and enable **Developer mode**.
