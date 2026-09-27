@@ -58,7 +58,7 @@ Copy the generated `https://…trycloudflare.com` URL and append `/mcp`.
 
 ### Keep the prototype running on this Mac
 
-For day-to-day use, the repository includes project-specific macOS LaunchAgents for both the MCP server and Cloudflare Tunnel. The installer copies a runnable bundle to `~/Library/Application Support/GuitarHoleCount`, outside macOS's protected Documents area. The agents start at login and macOS restarts either process if it exits:
+For day-to-day use, the repository includes project-specific macOS LaunchAgents for both the MCP server and Cloudflare Tunnel. The installer copies a runnable bundle to `~/Library/Application Support/GuitarHoleCount`, outside macOS's protected Documents area. Existing live state in that runtime is preserved across redeploys. The agents start at login and macOS restarts either process if it exits:
 
 ```bash
 ./scripts/deploy-macos-launch-agents.sh

@@ -15,7 +15,7 @@ ditto "$source_root/.local/runtime" "$runtime_root/.local/runtime"
 cp "$source_root/.local/cloudflared" "$runtime_root/.local/cloudflared"
 cp "$source_root/package.json" "$runtime_root/package.json"
 
-if [ -f "$source_root/data/state.json" ]; then
+if [ ! -f "$runtime_root/data/state.json" ] && [ -f "$source_root/data/state.json" ]; then
   cp "$source_root/data/state.json" "$runtime_root/data/state.json"
 fi
 
