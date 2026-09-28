@@ -159,6 +159,8 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   assert.match(appJs, /addEventListener\("scrollUp"/);
   assert.match(appJs, /addEventListener\("scrollDown"/);
   assert.match(appJs, /addEventListener\("sideClick"/);
+  assert.match(appJs, /<button type="button" class="quantity"/);
+  assert.doesNotMatch(appJs, /class="quantity" type="number"/);
   assert.match(appJs, /creationStorage\.secure/);
   assert.match(appJs, /STORAGE\.session/);
   assert.match(appJs, /installTokenFromHash\(location\.hash\)/);
