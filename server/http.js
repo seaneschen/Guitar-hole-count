@@ -25,6 +25,7 @@ const R1_ASSETS = Object.freeze({
   "/r1/core.js": ["core.js", "text/javascript; charset=utf-8"],
   "/r1/app.js": ["app.js", "text/javascript; charset=utf-8"],
   "/r1/icon.svg": ["icon.svg", "image/svg+xml; charset=utf-8"],
+  "/r1/icon.png": ["icon.png", "image/png", true],
 });
 
 function sendJson(res, status, value) {
@@ -242,11 +243,11 @@ export function createHttpServer({
   if (!store) throw new Error("createHttpServer requires a store.");
   const widgetHtml = readFileSync(widgetPath, "utf8");
   const r1Assets = Object.fromEntries(
-    Object.entries(R1_ASSETS).map(([route, [fileName, contentType]]) => [
+    Object.entries(R1_ASSETS).map(([route, [fileName, contentType, binary = false]]) => [
       route,
       {
         fileName,
-        body: readFileSync(path.join(r1Dir, fileName), "utf8"),
+        body: readFileSync(path.join(r1Dir, fileName), binary ? undefined : "utf8"),
         contentType,
       },
     ])

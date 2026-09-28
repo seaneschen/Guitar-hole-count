@@ -159,6 +159,12 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   assert.equal(iconResponse.status, 200);
   assert.match(iconResponse.headers.get("content-type"), /image\/svg\+xml/);
 
+  const pngIconResponse = await fetch(`${baseUrl}/r1/icon.png`);
+  assert.equal(pngIconResponse.status, 200);
+  assert.match(pngIconResponse.headers.get("content-type"), /image\/png/);
+  const pngSignature = Buffer.from(await pngIconResponse.arrayBuffer()).subarray(0, 8);
+  assert.deepEqual([...pngSignature], [137, 80, 78, 71, 13, 10, 26, 10]);
+
   const appJs = await readFile(new URL("../r1/app.js", import.meta.url), "utf8");
   assert.match(appJs, /addEventListener\("scrollUp"/);
   assert.match(appJs, /addEventListener\("scrollDown"/);
