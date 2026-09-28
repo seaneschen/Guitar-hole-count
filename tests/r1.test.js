@@ -10,6 +10,7 @@ import {
   HoleCountApi,
   clampCount,
   installTokenFromHash,
+  isProvisionedInstallPath,
   stepCarousel,
   zeroedMorningRows,
 } from "../r1/core.js";
@@ -19,11 +20,13 @@ let httpServer;
 let baseUrl;
 let pairingPath;
 let deviceTokenPath;
+const testDeviceToken = "d".repeat(43);
 
 before(async () => {
   dataDir = await mkdtemp(path.join(os.tmpdir(), "guitar-hole-count-r1-"));
   pairingPath = path.join(dataDir, "r1-pairing.json");
   deviceTokenPath = path.join(dataDir, "r1-device.key");
+  await writeFile(deviceTokenPath, `${testDeviceToken}\n`, { mode: 0o600 });
   httpServer = createHttpServer({
     store: new HoleCountStore({ dataDir }),
     r1ApiToken: "r1-test-token",
@@ -55,6 +58,8 @@ test("the installed creation URL can carry a reboot-stable device token", () => 
   assert.equal(installTokenFromHash(`#device=${token}`), token);
   assert.equal(installTokenFromHash("#device=too-short"), null);
   assert.equal(installTokenFromHash(""), null);
+  assert.equal(isProvisionedInstallPath(`/r1/device/${token}/`), true);
+  assert.equal(isProvisionedInstallPath("/r1/"), false);
 });
 
 test("a temporary code pairs once without exposing a permanent key in the creation", async () => {
@@ -65,7 +70,7 @@ test("a temporary code pairs once without exposing a permanent key in the creati
   );
   const paired = await HoleCountApi.pair({ baseUrl, code: "482913" });
   assert.notEqual(paired.token, "r1-test-token");
-  assert.equal(paired.token.length, 43);
+  assert.equal(paired.token, testDeviceToken);
   assert.equal((await readFile(deviceTokenPath, "utf8")).trim(), paired.token);
   assert.equal(paired.snapshot.revision, 0);
 
@@ -76,6 +81,25 @@ test("a temporary code pairs once without exposing a permanent key in the creati
     assert.equal(error.status, 410);
     return true;
   });
+});
+
+test("a private install path restores an authenticated session without device storage", async () => {
+  const installResponse = await fetch(`${baseUrl}/r1/device/${testDeviceToken}/`);
+  assert.equal(installResponse.status, 200);
+  assert.match(await installResponse.text(), /Guitar Hole Count/);
+  const cookie = installResponse.headers.get("set-cookie");
+  assert.match(cookie, new RegExp(`ghc_device=${testDeviceToken}`));
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+
+  const snapshotResponse = await fetch(`${baseUrl}/api/v1/snapshot`, {
+    headers: { Cookie: `ghc_device=${testDeviceToken}` },
+  });
+  assert.equal(snapshotResponse.status, 200);
+  assert.equal((await snapshotResponse.json()).snapshot.revision, 0);
+
+  const invalidInstall = await fetch(`${baseUrl}/r1/device/${"x".repeat(43)}/`);
+  assert.equal(invalidInstall.status, 404);
 });
 
 test("the R1 client and REST API share the authoritative store", async () => {
@@ -138,6 +162,7 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   assert.match(appJs, /creationStorage\.secure/);
   assert.match(appJs, /STORAGE\.session/);
   assert.match(appJs, /installTokenFromHash\(location\.hash\)/);
+  assert.match(appJs, /isProvisionedInstallPath\(location\.pathname\)/);
   assert.match(appJs, /HoleCountApi\.pair/);
   assert.match(appJs, /zeroedMorningRows/);
 });

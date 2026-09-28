@@ -101,12 +101,13 @@ async function handlePairing(
       return;
     }
 
-    const deviceToken = randomBytes(32).toString("base64url");
-    await writeFile(deviceTokenState.path, `${deviceToken}\n`, { mode: 0o600 });
-    deviceTokenState.value = deviceToken;
+    if (!deviceTokenState.value) {
+      deviceTokenState.value = randomBytes(32).toString("base64url");
+      await writeFile(deviceTokenState.path, `${deviceTokenState.value}\n`, { mode: 0o600 });
+    }
     await unlink(pairingPath);
     sendJson(res, 200, {
-      token: deviceToken,
+      token: deviceTokenState.value,
       snapshot: await store.snapshot(),
     });
   } catch (error) {
@@ -134,6 +135,14 @@ async function readJsonBody(req) {
   } catch {
     throw new Error("Request body must be valid JSON.");
   }
+}
+
+function requestCookie(req, name) {
+  for (const part of String(req.headers.cookie ?? "").split(";")) {
+    const [key, ...value] = part.trim().split("=");
+    if (key === name) return value.join("=");
+  }
+  return "";
 }
 
 async function handleR1Api(
@@ -174,9 +183,11 @@ async function handleR1Api(
   const suppliedToken = authorization.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length)
     : "";
+  const sessionToken = requestCookie(req, "ghc_device");
   const isAuthorized =
     tokensMatch(apiToken, suppliedToken) ||
-    tokensMatch(deviceTokenState.value, suppliedToken);
+    tokensMatch(deviceTokenState.value, suppliedToken) ||
+    tokensMatch(deviceTokenState.value, sessionToken);
   if (!isAuthorized) {
     res.setHeader("WWW-Authenticate", "Bearer");
     sendJson(res, 401, { error: "Invalid R1 synchronization credential." });
@@ -234,10 +245,14 @@ export function createHttpServer({
     Object.entries(R1_ASSETS).map(([route, [fileName, contentType]]) => [
       route,
       {
+        fileName,
         body: readFileSync(path.join(r1Dir, fileName), "utf8"),
         contentType,
       },
     ])
+  );
+  const r1Files = Object.fromEntries(
+    Object.values(r1Assets).map((asset) => [asset.fileName, asset])
   );
   const pairingAttempts = new Map();
   const deviceTokenState = {
@@ -264,6 +279,31 @@ export function createHttpServer({
     if (req.method === "GET" && url.pathname === "/r1") {
       res.writeHead(308, { location: "/r1/" }).end();
       return;
+    }
+
+    const provisionedMatch = url.pathname.match(
+      /^\/r1\/device\/([A-Za-z0-9_-]{43})\/(.*)$/
+    );
+    if (
+      req.method === "GET" &&
+      provisionedMatch &&
+      tokensMatch(deviceTokenState.value, provisionedMatch[1])
+    ) {
+      const fileName = provisionedMatch[2] || "index.html";
+      const asset = r1Files[fileName];
+      if (asset) {
+        const headers = {
+          "content-type": asset.contentType,
+          "cache-control": "no-store",
+        };
+        if (fileName === "index.html") {
+          headers["set-cookie"] =
+            `ghc_device=${deviceTokenState.value}; Path=/api/v1/; ` +
+            "Max-Age=31536000; HttpOnly; Secure; SameSite=Strict";
+        }
+        res.writeHead(200, headers).end(asset.body);
+        return;
+      }
     }
 
     const r1Asset = r1Assets[url.pathname];

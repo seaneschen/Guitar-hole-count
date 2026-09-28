@@ -118,16 +118,15 @@ its six digits on the r1:
 ./scripts/create-r1-pairing-code.sh
 ```
 
-The public HTTPS service address is stored in plain creation storage. The
-one-time code is exchanged for a revocable device token, distinct from the Mac
-mini's service credential. Because current OS3 builds may clear both secure and
-plain creation storage during a full reboot, the production install QR carries
-that token in the creation URL fragment. URL fragments are retained as part of
-the installed creation address but are never sent in HTTP requests to GitHub or
-ngrok. Storage copies remain as a convenience for ordinary close and reopen
-cycles. When the Mac mini cannot be reached, the creation displays its last
-cached snapshot but disables mutations instead of allowing the r1 and ChatGPT
-values to diverge.
+The one-time code is exchanged for a revocable device token, distinct from the
+Mac mini's service credential. Current OS3 builds may clear creation storage
+during a full reboot and strip URL fragments during installation, so the
+production install QR opens a private tokenized path on the Mac mini's HTTPS
+tunnel. Each launch validates that path and restores an HttpOnly API session;
+it does not depend on device storage. The private path passes through ngrok and
+may appear in ngrok request logs, but its credential is scoped only to this
+guitar count and can be rotated. When the Mac mini cannot be reached, mutations
+remain unavailable so the r1 and ChatGPT values cannot silently diverge.
 
 Long-press is reserved for a later voice experiment. The currently published
 Creations SDK documents long-press events, microphone access, and text messages
