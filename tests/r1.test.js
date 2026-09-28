@@ -162,6 +162,8 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   const appJs = await readFile(new URL("../r1/app.js", import.meta.url), "utf8");
   assert.match(appJs, /addEventListener\("scrollUp"/);
   assert.match(appJs, /addEventListener\("scrollDown"/);
+  assert.match(appJs, /addEventListener\("scrollUp", \(\) => turnWheel\("down"\)\)/);
+  assert.match(appJs, /addEventListener\("scrollDown", \(\) => turnWheel\("up"\)\)/);
   assert.match(appJs, /addEventListener\("sideClick"/);
   assert.match(appJs, /addEventListener\("touchmove", moveCarouselSwipe, \{ passive: false \}\)/);
   assert.match(appJs, /requestAnimationFrame\(coast\)/);
