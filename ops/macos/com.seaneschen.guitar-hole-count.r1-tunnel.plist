@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.seaneschen.guitar-hole-count.r1-tunnel</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/.local/ngrok/ngrok</string>
+    <string>http</string>
+    <string>http://127.0.0.1:8787</string>
+    <string>--url</string>
+    <string>https://reconvene-devalue-petticoat.ngrok-free.dev</string>
+    <string>--config</string>
+    <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/secrets/ngrok.yml</string>
+    <string>--log</string>
+    <string>stdout</string>
+    <string>--log-format</string>
+    <string>json</string>
+    <string>--inspect=false</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/data/r1-tunnel-launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/data/r1-tunnel-launchd.log</string>
+</dict>
+</plist>

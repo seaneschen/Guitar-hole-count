@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createHttpServer } from "../server/http.js";
@@ -16,12 +16,15 @@ import {
 let dataDir;
 let httpServer;
 let baseUrl;
+let pairingPath;
 
 before(async () => {
   dataDir = await mkdtemp(path.join(os.tmpdir(), "guitar-hole-count-r1-"));
+  pairingPath = path.join(dataDir, "r1-pairing.json");
   httpServer = createHttpServer({
     store: new HoleCountStore({ dataDir }),
     r1ApiToken: "r1-test-token",
+    r1PairingPath: pairingPath,
   });
   await new Promise((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
   const address = httpServer.address();
@@ -41,6 +44,22 @@ test("carousel math clamps counts and morning rows start at zero", () => {
     zeroedMorningRows({ rows: [{ label: "Fender", remaining: 8 }] }),
     [{ label: "Fender", count: 0 }]
   );
+});
+
+test("a temporary code pairs once without exposing a permanent key in the creation", async () => {
+  await writeFile(
+    pairingPath,
+    JSON.stringify({ code: "482913", expiresAt: Date.now() + 60_000 }),
+    "utf8"
+  );
+  const paired = await HoleCountApi.pair({ baseUrl, code: "482913" });
+  assert.equal(paired.token, "r1-test-token");
+  assert.equal(paired.snapshot.revision, 0);
+
+  await assert.rejects(() => HoleCountApi.pair({ baseUrl, code: "482913" }), (error) => {
+    assert.equal(error.status, 410);
+    return true;
+  });
 });
 
 test("the R1 client and REST API share the authoritative store", async () => {
@@ -92,10 +111,15 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   assert.equal(response.status, 200);
   assert.match(await response.text(), /Guitar Hole Count/);
 
+  const iconResponse = await fetch(`${baseUrl}/r1/icon.svg`);
+  assert.equal(iconResponse.status, 200);
+  assert.match(iconResponse.headers.get("content-type"), /image\/svg\+xml/);
+
   const appJs = await readFile(new URL("../r1/app.js", import.meta.url), "utf8");
   assert.match(appJs, /addEventListener\("scrollUp"/);
   assert.match(appJs, /addEventListener\("scrollDown"/);
   assert.match(appJs, /addEventListener\("sideClick"/);
   assert.match(appJs, /creationStorage\.secure/);
+  assert.match(appJs, /HoleCountApi\.pair/);
   assert.match(appJs, /zeroedMorningRows/);
 });

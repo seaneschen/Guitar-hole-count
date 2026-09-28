@@ -1,6 +1,7 @@
 import { createServer as createNodeHttpServer } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -23,6 +24,7 @@ const R1_ASSETS = Object.freeze({
   "/r1/styles.css": ["styles.css", "text/css; charset=utf-8"],
   "/r1/core.js": ["core.js", "text/javascript; charset=utf-8"],
   "/r1/app.js": ["app.js", "text/javascript; charset=utf-8"],
+  "/r1/icon.svg": ["icon.svg", "image/svg+xml; charset=utf-8"],
 });
 
 function sendJson(res, status, value) {
@@ -51,6 +53,63 @@ function tokensMatch(expected, actual) {
   );
 }
 
+function pairingClientKey(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  return String(Array.isArray(forwarded) ? forwarded[0] : forwarded || req.socket.remoteAddress || "unknown")
+    .split(",")[0]
+    .trim();
+}
+
+function recordPairingAttempt(attempts, key) {
+  const now = Date.now();
+  const recent = (attempts.get(key) ?? []).filter((timestamp) => now - timestamp < 60_000);
+  recent.push(now);
+  attempts.set(key, recent);
+  return recent.length;
+}
+
+async function handlePairing(req, res, store, apiToken, pairingPath, pairingAttempts) {
+  if (!apiToken || !pairingPath) {
+    sendJson(res, 503, { error: "R1 pairing is not configured." });
+    return;
+  }
+
+  const attemptCount = recordPairingAttempt(pairingAttempts, pairingClientKey(req));
+  if (attemptCount > 5) {
+    sendJson(res, 429, { error: "Too many pairing attempts. Wait one minute and try again." });
+    return;
+  }
+
+  try {
+    const body = await readJsonBody(req);
+    const suppliedCode = String(body.code ?? "").trim();
+    const pairing = JSON.parse(await readFile(pairingPath, "utf8"));
+    if (!Number.isFinite(pairing.expiresAt) || pairing.expiresAt < Date.now()) {
+      await unlink(pairingPath).catch(() => undefined);
+      sendJson(res, 410, { error: "That pairing code expired. Generate a new one." });
+      return;
+    }
+    if (!/^\d{6}$/.test(suppliedCode) || !tokensMatch(String(pairing.code), suppliedCode)) {
+      sendJson(res, 401, { error: "That pairing code is not valid." });
+      return;
+    }
+
+    await unlink(pairingPath);
+    sendJson(res, 200, {
+      token: apiToken,
+      snapshot: await store.snapshot(),
+    });
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      sendJson(res, 410, { error: "Generate a new pairing code on the Mac mini." });
+      return;
+    }
+    sendJson(res, 400, {
+      error: error instanceof Error ? error.message : "Unable to pair this R1.",
+    });
+  }
+}
+
 async function readJsonBody(req) {
   const chunks = [];
   let size = 0;
@@ -67,11 +126,24 @@ async function readJsonBody(req) {
   }
 }
 
-async function handleR1Api(req, res, url, store, apiToken) {
+async function handleR1Api(
+  req,
+  res,
+  url,
+  store,
+  apiToken,
+  pairingPath,
+  pairingAttempts
+) {
   setR1Cors(res);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204).end();
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/v1/pair") {
+    await handlePairing(req, res, store, apiToken, pairingPath, pairingAttempts);
     return;
   }
 
@@ -132,6 +204,7 @@ export function createHttpServer({
   widgetPath = defaultWidgetPath,
   r1Dir = defaultR1Dir,
   r1ApiToken = process.env.R1_API_TOKEN,
+  r1PairingPath = process.env.R1_PAIRING_FILE,
 } = {}) {
   if (!store) throw new Error("createHttpServer requires a store.");
   const widgetHtml = readFileSync(widgetPath, "utf8");
@@ -144,6 +217,7 @@ export function createHttpServer({
       },
     ])
   );
+  const pairingAttempts = new Map();
 
   return createNodeHttpServer(async (req, res) => {
     if (!req.url) {
@@ -170,7 +244,15 @@ export function createHttpServer({
     }
 
     if (url.pathname.startsWith("/api/v1/")) {
-      await handleR1Api(req, res, url, store, r1ApiToken);
+      await handleR1Api(
+        req,
+        res,
+        url,
+        store,
+        r1ApiToken,
+        r1PairingPath,
+        pairingAttempts
+      );
       return;
     }
 

@@ -102,6 +102,8 @@ Useful end-to-end prompts:
 The static creation lives in [`r1/`](r1/). Its core workflow deliberately does
 not invoke the r1 LLM:
 
+Hosted creation: <https://seaneschen.github.io/creations-sdk/guitar-hole-count/>
+
 - Tap a quantity to focus it.
 - Briefly press the side button to enter wheel mode.
 - Turn the wheel to adjust that quantity.
@@ -109,10 +111,18 @@ not invoke the r1 LLM:
 - Tap `−` to break out one guitar immediately.
 - Start a new morning to retain category names with every count reset to zero.
 
-The public HTTPS service address is stored in plain creation storage. The API
-token is stored with `creationStorage.secure`. When the Mac mini cannot be
-reached, the creation displays its last cached snapshot but disables mutations
-instead of allowing the r1 and ChatGPT values to diverge.
+On first launch, generate a ten-minute pairing code on the Mac mini and enter
+its six digits on the r1:
+
+```bash
+./scripts/create-r1-pairing-code.sh
+```
+
+The public HTTPS service address is stored in plain creation storage. The
+one-time code is exchanged for an API token stored with
+`creationStorage.secure`. When the Mac mini cannot be reached, the creation
+displays its last cached snapshot but disables mutations instead of allowing
+the r1 and ChatGPT values to diverge.
 
 Long-press is reserved for a later voice experiment. The currently published
 Creations SDK documents long-press events, microphone access, and text messages
@@ -122,6 +132,7 @@ The production counting path therefore does not depend on voice or LLM credits.
 The authenticated JSON API is intentionally narrow:
 
 - `GET /api/v1/snapshot`
+- `POST /api/v1/pair`
 - `PUT /api/v1/morning`
 - `POST /api/v1/breakouts`
 - `PATCH /api/v1/corrections`

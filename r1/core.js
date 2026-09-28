@@ -1,4 +1,5 @@
 export const MAX_COUNT = 999;
+export const DEFAULT_SYNC_URL = "https://reconvene-devalue-petticoat.ngrok-free.dev";
 
 export function clampCount(value) {
   const number = Number(value);
@@ -40,6 +41,31 @@ export class HoleCountApi {
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.token = token;
     this.fetchImpl = (...args) => fetchImpl.call(globalThis, ...args);
+  }
+
+  static async pair({ baseUrl, code, fetchImpl = globalThis.fetch }) {
+    const response = await fetchImpl.call(globalThis, `${normalizeBaseUrl(baseUrl)}/api/v1/pair`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "1",
+      },
+      body: JSON.stringify({ code: String(code ?? "").trim() }),
+    });
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new ApiError("The pairing service returned an unreadable response.", {
+        status: response.status,
+      });
+    }
+    if (!response.ok) {
+      throw new ApiError(payload.error || "Unable to pair this R1.", {
+        status: response.status,
+      });
+    }
+    return payload;
   }
 
   async request(path, { method = "GET", body } = {}) {

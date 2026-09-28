@@ -19,6 +19,7 @@ bootstrap_agent() {
 }
 
 mkdir -p \
+  "$runtime_root/.local/ngrok" \
   "$runtime_root/.local/tunnel-client" \
   "$runtime_root/data" \
   "$runtime_root/secrets" \
@@ -34,6 +35,10 @@ cp "$source_root/.local/tunnel-client-v0.0.15/tunnel-client" \
   "$runtime_root/.local/tunnel-client/tunnel-client"
 cp "$source_root/.local/tunnel-client-v0.0.15/cloudflared" \
   "$runtime_root/.local/tunnel-client/cloudflared"
+if [ -x "$source_root/.local/ngrok/ngrok" ]; then
+  cp "$source_root/.local/ngrok/ngrok" "$runtime_root/.local/ngrok/ngrok"
+  chmod 755 "$runtime_root/.local/ngrok/ngrok"
+fi
 cp "$source_root/package.json" "$runtime_root/package.json"
 cp "$source_root/ops/macos/tunnel-client/guitar-hole-count.yaml" \
   "$runtime_root/tunnel-client/guitar-hole-count.yaml"
@@ -74,7 +79,12 @@ cp "$source_root/ops/macos/com.seaneschen.guitar-hole-count.server.plist" \
   "$launch_agents_root/com.seaneschen.guitar-hole-count.server.plist"
 cp "$source_root/ops/macos/com.seaneschen.guitar-hole-count.openai-tunnel.plist" \
   "$launch_agents_root/com.seaneschen.guitar-hole-count.openai-tunnel.plist"
+if [ -x "$runtime_root/.local/ngrok/ngrok" ] && [ -s "$runtime_root/secrets/ngrok.yml" ]; then
+  cp "$source_root/ops/macos/com.seaneschen.guitar-hole-count.r1-tunnel.plist" \
+    "$launch_agents_root/com.seaneschen.guitar-hole-count.r1-tunnel.plist"
+fi
 
+launchctl bootout "$launch_domain/com.seaneschen.guitar-hole-count.r1-tunnel" 2>/dev/null || true
 launchctl bootout "$launch_domain/com.seaneschen.guitar-hole-count.openai-tunnel" 2>/dev/null || true
 launchctl bootout "$launch_domain/com.seaneschen.guitar-hole-count.server" 2>/dev/null || true
 
@@ -90,6 +100,25 @@ until /usr/bin/curl -fsS http://127.0.0.1:8787/ >/dev/null; do
   fi
   sleep 1
 done
+
+if [ -x "$runtime_root/.local/ngrok/ngrok" ] && [ -s "$runtime_root/secrets/ngrok.yml" ]; then
+  bootstrap_agent \
+    "$launch_agents_root/com.seaneschen.guitar-hole-count.r1-tunnel.plist"
+
+  r1_api_token=$(/bin/cat "$runtime_root/secrets/r1-api.key")
+  attempt=0
+  until /usr/bin/curl -fsS \
+    -H "Authorization: Bearer ${r1_api_token}" \
+    -H "ngrok-skip-browser-warning: 1" \
+    https://reconvene-devalue-petticoat.ngrok-free.dev/api/v1/snapshot >/dev/null; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 30 ]; then
+      echo "R1 tunnel did not become ready; see $runtime_root/data/r1-tunnel-launchd.log" >&2
+      exit 1
+    fi
+    sleep 1
+  done
+fi
 
 bootstrap_agent \
   "$launch_agents_root/com.seaneschen.guitar-hole-count.openai-tunnel.plist"
@@ -113,3 +142,6 @@ fi
 echo "Guitar Hole Count background services installed."
 echo "Runtime: $runtime_root"
 echo "OpenAI tunnel: ready"
+if [ -s "$runtime_root/secrets/ngrok.yml" ]; then
+  echo "R1 tunnel: https://reconvene-devalue-petticoat.ngrok-free.dev"
+fi

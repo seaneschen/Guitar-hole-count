@@ -1,5 +1,6 @@
 import {
   ApiError,
+  DEFAULT_SYNC_URL,
   HoleCountApi,
   MAX_COUNT,
   clampCount,
@@ -149,17 +150,18 @@ function renderMorning() {
 
 function renderSetup(error = "") {
   state.screen = "setup";
-  const defaultEndpoint = state.config?.baseUrl || (location.protocol.startsWith("http") ? location.origin : "");
+  const isLocalPreview = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const defaultEndpoint = state.config?.baseUrl || (isLocalPreview ? location.origin : DEFAULT_SYNC_URL);
   app.innerHTML = `<section class="setup">${header({ back: Boolean(state.snapshot) })}
-    <h1 class="screen-title">Connect</h1>
-    <p>Connect this R1 to the same guitar-wall count used by ChatGPT.</p>
+    <h1 class="screen-title">Pair this r1</h1>
+    <p>Enter the temporary six-digit code shown by the Mac mini.</p>
     <form id="setup-form">
       <label for="endpoint">HTTPS service address</label>
       <input id="endpoint" name="endpoint" type="url" value="${escapeHtml(defaultEndpoint)}" required autocomplete="url">
-      <label for="token">Private synchronization key</label>
-      <input id="token" name="token" type="password" value="" required autocomplete="off">
+      <label for="code">Pairing code</label>
+      <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code">
       ${error ? `<p>${escapeHtml(error)}</p>` : ""}
-      <div class="actions"><span></span><button class="primary" type="submit">Connect</button></div>
+      <div class="actions"><span></span><button class="primary" type="submit">Pair</button></div>
     </form>
   </section>`;
 }
@@ -363,16 +365,16 @@ app.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.target);
   const config = { baseUrl: String(form.get("endpoint") || "").trim() };
-  const token = String(form.get("token") || "").trim();
+  const code = String(form.get("code") || "").trim();
   try {
-    const api = new HoleCountApi({ ...config, token });
-    const snapshot = await api.snapshot();
+    const paired = await HoleCountApi.pair({ ...config, code });
+    const api = new HoleCountApi({ ...config, token: paired.token });
     await storageSet(STORAGE.endpoint, config);
-    await storageSet(STORAGE.token, token, true);
+    await storageSet(STORAGE.token, paired.token, true);
     state.config = config;
     state.api = api;
     state.online = true;
-    await cacheSnapshot(snapshot);
+    await cacheSnapshot(paired.snapshot);
     renderMain();
   } catch (error) {
     state.online = false;
