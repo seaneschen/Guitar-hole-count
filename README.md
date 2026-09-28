@@ -119,10 +119,13 @@ its six digits on the r1:
 ```
 
 The public HTTPS service address is stored in plain creation storage. The
-one-time code is exchanged for an API token stored with
-`creationStorage.secure`. When the Mac mini cannot be reached, the creation
-displays its last cached snapshot but disables mutations instead of allowing
-the r1 and ChatGPT values to diverge.
+one-time code is exchanged for a revocable device token, distinct from the
+Mac mini's service credential. The creation stores that token in secure
+storage and also in creation-isolated plain storage as a compatibility fallback
+for OS3 builds that do not reliably retain secure storage after closing a
+creation. When the Mac mini cannot be reached, the creation displays its last
+cached snapshot but disables mutations instead of allowing the r1 and ChatGPT
+values to diverge.
 
 Long-press is reserved for a later voice experiment. The currently published
 Creations SDK documents long-press events, microphone access, and text messages

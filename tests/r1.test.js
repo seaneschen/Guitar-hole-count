@@ -17,14 +17,17 @@ let dataDir;
 let httpServer;
 let baseUrl;
 let pairingPath;
+let deviceTokenPath;
 
 before(async () => {
   dataDir = await mkdtemp(path.join(os.tmpdir(), "guitar-hole-count-r1-"));
   pairingPath = path.join(dataDir, "r1-pairing.json");
+  deviceTokenPath = path.join(dataDir, "r1-device.key");
   httpServer = createHttpServer({
     store: new HoleCountStore({ dataDir }),
     r1ApiToken: "r1-test-token",
     r1PairingPath: pairingPath,
+    r1DeviceTokenPath: deviceTokenPath,
   });
   await new Promise((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
   const address = httpServer.address();
@@ -53,8 +56,13 @@ test("a temporary code pairs once without exposing a permanent key in the creati
     "utf8"
   );
   const paired = await HoleCountApi.pair({ baseUrl, code: "482913" });
-  assert.equal(paired.token, "r1-test-token");
+  assert.notEqual(paired.token, "r1-test-token");
+  assert.equal(paired.token.length, 43);
+  assert.equal((await readFile(deviceTokenPath, "utf8")).trim(), paired.token);
   assert.equal(paired.snapshot.revision, 0);
+
+  const pairedApi = new HoleCountApi({ baseUrl, token: paired.token });
+  assert.equal((await pairedApi.snapshot()).revision, 0);
 
   await assert.rejects(() => HoleCountApi.pair({ baseUrl, code: "482913" }), (error) => {
     assert.equal(error.status, 410);
@@ -120,6 +128,7 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   assert.match(appJs, /addEventListener\("scrollDown"/);
   assert.match(appJs, /addEventListener\("sideClick"/);
   assert.match(appJs, /creationStorage\.secure/);
+  assert.match(appJs, /STORAGE\.session/);
   assert.match(appJs, /HoleCountApi\.pair/);
   assert.match(appJs, /zeroedMorningRows/);
 });

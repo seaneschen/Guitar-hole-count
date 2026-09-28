@@ -1,7 +1,7 @@
 import { createServer as createNodeHttpServer } from "node:http";
-import { timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readFile, unlink } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -68,8 +68,15 @@ function recordPairingAttempt(attempts, key) {
   return recent.length;
 }
 
-async function handlePairing(req, res, store, apiToken, pairingPath, pairingAttempts) {
-  if (!apiToken || !pairingPath) {
+async function handlePairing(
+  req,
+  res,
+  store,
+  pairingPath,
+  deviceTokenState,
+  pairingAttempts
+) {
+  if (!pairingPath || !deviceTokenState.path) {
     sendJson(res, 503, { error: "R1 pairing is not configured." });
     return;
   }
@@ -94,9 +101,12 @@ async function handlePairing(req, res, store, apiToken, pairingPath, pairingAtte
       return;
     }
 
+    const deviceToken = randomBytes(32).toString("base64url");
+    await writeFile(deviceTokenState.path, `${deviceToken}\n`, { mode: 0o600 });
+    deviceTokenState.value = deviceToken;
     await unlink(pairingPath);
     sendJson(res, 200, {
-      token: apiToken,
+      token: deviceToken,
       snapshot: await store.snapshot(),
     });
   } catch (error) {
@@ -133,6 +143,7 @@ async function handleR1Api(
   store,
   apiToken,
   pairingPath,
+  deviceTokenState,
   pairingAttempts
 ) {
   setR1Cors(res);
@@ -143,7 +154,14 @@ async function handleR1Api(
   }
 
   if (req.method === "POST" && url.pathname === "/api/v1/pair") {
-    await handlePairing(req, res, store, apiToken, pairingPath, pairingAttempts);
+    await handlePairing(
+      req,
+      res,
+      store,
+      pairingPath,
+      deviceTokenState,
+      pairingAttempts
+    );
     return;
   }
 
@@ -156,7 +174,10 @@ async function handleR1Api(
   const suppliedToken = authorization.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length)
     : "";
-  if (!tokensMatch(apiToken, suppliedToken)) {
+  const isAuthorized =
+    tokensMatch(apiToken, suppliedToken) ||
+    tokensMatch(deviceTokenState.value, suppliedToken);
+  if (!isAuthorized) {
     res.setHeader("WWW-Authenticate", "Bearer");
     sendJson(res, 401, { error: "Invalid R1 synchronization credential." });
     return;
@@ -205,6 +226,7 @@ export function createHttpServer({
   r1Dir = defaultR1Dir,
   r1ApiToken = process.env.R1_API_TOKEN,
   r1PairingPath = process.env.R1_PAIRING_FILE,
+  r1DeviceTokenPath = process.env.R1_DEVICE_TOKEN_FILE,
 } = {}) {
   if (!store) throw new Error("createHttpServer requires a store.");
   const widgetHtml = readFileSync(widgetPath, "utf8");
@@ -218,6 +240,18 @@ export function createHttpServer({
     ])
   );
   const pairingAttempts = new Map();
+  const deviceTokenState = {
+    path: r1DeviceTokenPath,
+    value: r1DeviceTokenPath
+      ? (() => {
+          try {
+            return readFileSync(r1DeviceTokenPath, "utf8").trim();
+          } catch {
+            return "";
+          }
+        })()
+      : "",
+  };
 
   return createNodeHttpServer(async (req, res) => {
     if (!req.url) {
@@ -251,6 +285,7 @@ export function createHttpServer({
         store,
         r1ApiToken,
         r1PairingPath,
+        deviceTokenState,
         pairingAttempts
       );
       return;

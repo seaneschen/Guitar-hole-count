@@ -21,6 +21,8 @@
     <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/secrets/r1-api.key</string>
     <key>R1_PAIRING_FILE</key>
     <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/secrets/r1-pairing.json</string>
+    <key>R1_DEVICE_TOKEN_FILE</key>
+    <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/secrets/r1-device.key</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>
