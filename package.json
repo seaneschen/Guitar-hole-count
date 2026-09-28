@@ -1,6 +1,6 @@
 {
   "name": "guitar-hole-count-mcp",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "type": "module",
   "description": "A tiny stateful MCP App for tracking empty guitar-wall holes.",
