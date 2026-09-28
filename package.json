@@ -1,12 +1,12 @@
 {
   "name": "guitar-hole-count-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "A tiny stateful MCP App for tracking empty guitar-wall holes.",
   "scripts": {
     "start": "node server/index.js",
-    "check": "node --check server/index.js && node --check server/http.js && node --check server/mcp.js && node --check server/store.js",
+    "check": "node --check server/index.js && node --check server/http.js && node --check server/mcp.js && node --check server/store.js && node --check r1/core.js && node --check r1/app.js",
     "test": "node --test tests/*.test.js",
     "smoke": "node scripts/exercise-mcp.js"
   },

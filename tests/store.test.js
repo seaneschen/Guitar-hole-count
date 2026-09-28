@@ -3,7 +3,7 @@ import { afterEach, beforeEach, test } from "node:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { HoleCountStore } from "../server/store.js";
+import { HoleCountStore, RevisionConflictError } from "../server/store.js";
 
 let dataDir;
 let store;
@@ -168,4 +168,20 @@ test("duplicate labels are rejected case-insensitively", async () => {
       ]),
     /Duplicate label/
   );
+});
+
+test("an R1 write cannot overwrite a newer ChatGPT revision", async () => {
+  await store.setMorningCount([{ label: "Fender", count: 5 }]);
+  const staleRevision = (await store.snapshot()).revision;
+  await store.breakOut([{ label: "Fender", quantity: 1 }]);
+
+  await assert.rejects(
+    () =>
+      store.correctCount(
+        [{ label: "Fender", remaining: 5 }],
+        { expectedRevision: staleRevision }
+      ),
+    RevisionConflictError
+  );
+  assert.equal((await store.snapshot()).rows[0].remaining, 4);
 });

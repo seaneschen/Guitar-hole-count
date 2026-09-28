@@ -2,6 +2,10 @@
 
 A deliberately tiny ChatGPT MCP App for one job: enter the guitar-wall hole count in the morning, decrement it as guitars are broken out, and recall the current remaining balance later.
 
+The repository also contains a rabbit r1 creation optimized for its 240×282
+display, scroll wheel, and side button. Both clients use the same authoritative
+snapshot on the Mac mini.
+
 ## Product behavior
 
 - One current JSON snapshot only; there is no history.
@@ -12,6 +16,10 @@ A deliberately tiny ChatGPT MCP App for one job: enter the guitar-wall hole coun
 - Remaining counts stay editable; direct corrections preserve legitimate breakout progress.
 - The most recent decrement offers a short-lived Undo action.
 - The card includes a focused morning-count editor.
+- The r1 uses its wheel as a focused quantity carousel and retains the same
+  one-tap `−` breakout control.
+- Revision checks prevent an r1 correction from overwriting a newer ChatGPT
+  update.
 
 State is stored in `data/state.json`, or in `$DATA_DIR/state.json` when `DATA_DIR` is set. Each successful mutation also refreshes `state.backup.json`; if the primary file is ever unreadable, the service falls back to that redundant snapshot.
 
@@ -48,6 +56,11 @@ The server binds to the loopback interface by default, so it is not directly exp
 - MCP endpoint: `http://localhost:8787/mcp`
 - Health/current snapshot: `http://localhost:8787/`
 - Standalone UI preview: `http://localhost:8787/preview`
+- rabbit r1 creation preview: `http://localhost:8787/r1/`
+
+R1 synchronization is disabled unless `R1_API_TOKEN` or `R1_API_TOKEN_FILE`
+is configured. The macOS installer generates a mode-`600` token file on first
+deployment and preserves it across later deployments.
 
 ## Connect from ChatGPT
 
@@ -84,6 +97,40 @@ Useful end-to-end prompts:
 - `How many holes are left?`
 - `Put one Fender hole back; I tapped it by mistake.`
 
+## Rabbit r1 creation
+
+The static creation lives in [`r1/`](r1/). Its core workflow deliberately does
+not invoke the r1 LLM:
+
+- Tap a quantity to focus it.
+- Briefly press the side button to enter wheel mode.
+- Turn the wheel to adjust that quantity.
+- Briefly press again to save and return.
+- Tap `−` to break out one guitar immediately.
+- Start a new morning to retain category names with every count reset to zero.
+
+The public HTTPS service address is stored in plain creation storage. The API
+token is stored with `creationStorage.secure`. When the Mac mini cannot be
+reached, the creation displays its last cached snapshot but disables mutations
+instead of allowing the r1 and ChatGPT values to diverge.
+
+Long-press is reserved for a later voice experiment. The currently published
+Creations SDK documents long-press events, microphone access, and text messages
+to the r1 LLM, but not a dependable creation-level speech-transcription result.
+The production counting path therefore does not depend on voice or LLM credits.
+
+The authenticated JSON API is intentionally narrow:
+
+- `GET /api/v1/snapshot`
+- `PUT /api/v1/morning`
+- `POST /api/v1/breakouts`
+- `PATCH /api/v1/corrections`
+- `POST /api/v1/adjustments`
+
+All requests require `Authorization: Bearer <token>`. Mutations carry the last
+observed revision and receive HTTP `409` plus the current snapshot if another
+client changed the wall first.
+
 ## Architecture
 
 ```text
@@ -94,6 +141,11 @@ server/
   store.js        authoritative JSON snapshot and validation
 web/
   hole-count-widget.html
+r1/
+  index.html      r1 creation shell
+  styles.css      fixed-screen presentation
+  core.js         API client and deterministic count helpers
+  app.js          touch, wheel, side-button, storage, and sync behavior
 tests/
 ```
 

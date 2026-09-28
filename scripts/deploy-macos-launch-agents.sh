@@ -27,6 +27,7 @@ mkdir -p \
 
 ditto "$source_root/server" "$runtime_root/server"
 ditto "$source_root/web" "$runtime_root/web"
+ditto "$source_root/r1" "$runtime_root/r1"
 ditto "$source_root/node_modules" "$runtime_root/node_modules"
 ditto "$source_root/.local/runtime" "$runtime_root/.local/runtime"
 cp "$source_root/.local/tunnel-client-v0.0.15/tunnel-client" \
@@ -50,6 +51,20 @@ elif [ ! -s "$runtime_root/secrets/control-plane.key" ]; then
   echo "No tunnel credential is available." >&2
   exit 1
 fi
+
+if [ -f "$source_root/.env.local" ]; then
+  r1_api_token=$(/usr/bin/sed -n 's/^R1_API_TOKEN=//p' "$source_root/.env.local" | /usr/bin/tail -n 1)
+else
+  r1_api_token=""
+fi
+if [ -n "$r1_api_token" ]; then
+  umask 077
+  printf '%s' "$r1_api_token" > "$runtime_root/secrets/r1-api.key"
+elif [ ! -s "$runtime_root/secrets/r1-api.key" ]; then
+  umask 077
+  /usr/bin/openssl rand -hex 32 > "$runtime_root/secrets/r1-api.key"
+fi
+chmod 600 "$runtime_root/secrets/r1-api.key"
 
 if [ ! -f "$runtime_root/data/state.json" ] && [ -f "$source_root/data/state.json" ]; then
   cp "$source_root/data/state.json" "$runtime_root/data/state.json"

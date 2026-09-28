@@ -4,5 +4,6 @@ data/
 .env.local
 .DS_Store
 .local/
+dist/
 *.log
 *.pid

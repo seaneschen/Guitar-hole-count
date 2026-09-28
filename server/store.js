@@ -7,6 +7,17 @@ const EMPTY_STATE = Object.freeze({
   revision: 0,
 });
 
+export class RevisionConflictError extends Error {
+  constructor(expectedRevision, actualRevision) {
+    super(
+      `The guitar wall changed elsewhere (expected revision ${expectedRevision}, current revision ${actualRevision}).`
+    );
+    this.name = "RevisionConflictError";
+    this.expectedRevision = expectedRevision;
+    this.actualRevision = actualRevision;
+  }
+}
+
 function cleanLabel(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }
@@ -57,6 +68,16 @@ function findStoredLabel(state, requestedLabel) {
   return Object.keys(state.counts).find(
     (label) => label.toLocaleLowerCase() === target
   );
+}
+
+function assertExpectedRevision(state, expectedRevision) {
+  if (expectedRevision === undefined || expectedRevision === null) return;
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+    throw new Error("Expected revision must be a non-negative whole number.");
+  }
+  if (state.revision !== expectedRevision) {
+    throw new RevisionConflictError(expectedRevision, state.revision);
+  }
 }
 
 export function toSnapshot(state) {
@@ -143,7 +164,7 @@ export class HoleCountStore {
     return toSnapshot(await this.readState());
   }
 
-  setMorningCount(entries) {
+  setMorningCount(entries, { expectedRevision } = {}) {
     return this.#mutate(async () => {
       if (!Array.isArray(entries) || entries.length === 0) {
         throw new Error("Enter at least one brand or category.");
@@ -165,6 +186,7 @@ export class HoleCountStore {
       }
 
       const current = await this.#readStateFile();
+      assertExpectedRevision(current, expectedRevision);
       return this.#writeState({
         counts,
         updatedAt: new Date().toISOString(),
@@ -173,13 +195,14 @@ export class HoleCountStore {
     });
   }
 
-  breakOut(entries) {
+  breakOut(entries, { expectedRevision } = {}) {
     return this.#mutate(async () => {
       if (!Array.isArray(entries) || entries.length === 0) {
         throw new Error("Provide at least one guitar breakout.");
       }
 
       const state = await this.#readStateFile();
+      assertExpectedRevision(state, expectedRevision);
       if (Object.keys(state.counts).length === 0) {
         throw new Error("Enter a morning hole count first.");
       }
@@ -217,13 +240,14 @@ export class HoleCountStore {
     });
   }
 
-  correctCount(entries) {
+  correctCount(entries, { expectedRevision } = {}) {
     return this.#mutate(async () => {
       if (!Array.isArray(entries) || entries.length === 0) {
         throw new Error("Provide at least one corrected hole count.");
       }
 
       const state = await this.#readStateFile();
+      assertExpectedRevision(state, expectedRevision);
       if (Object.keys(state.counts).length === 0) {
         throw new Error("Enter a morning hole count first.");
       }
@@ -261,13 +285,14 @@ export class HoleCountStore {
     });
   }
 
-  adjustBalance(entries) {
+  adjustBalance(entries, { expectedRevision } = {}) {
     return this.#mutate(async () => {
       if (!Array.isArray(entries) || entries.length === 0) {
         throw new Error("Provide at least one balance adjustment.");
       }
 
       const state = await this.#readStateFile();
+      assertExpectedRevision(state, expectedRevision);
       if (Object.keys(state.counts).length === 0) {
         throw new Error("Enter a morning hole count first.");
       }

@@ -17,6 +17,8 @@
     <string>8787</string>
     <key>HOST</key>
     <string>127.0.0.1</string>
+    <key>R1_API_TOKEN_FILE</key>
+    <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/secrets/r1-api.key</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>
