@@ -9,6 +9,8 @@ A deliberately tiny ChatGPT MCP App for one job: enter the guitar-wall hole coun
 - Counts cannot go below zero or above their morning starting value.
 - One natural-language call can update multiple brands/categories atomically.
 - The ChatGPT card has a one-tap `−` control with an immediate optimistic update.
+- Remaining counts stay editable; direct corrections preserve legitimate breakout progress.
+- The most recent decrement offers a short-lived Undo action.
 - The card includes a focused morning-count editor.
 
 State is stored in `data/state.json`, or in `$DATA_DIR/state.json` when `DATA_DIR` is set. Each successful mutation also refreshes `state.backup.json`; if the primary file is ever unreadable, the service falls back to that redundant snapshot.
@@ -18,6 +20,7 @@ State is stored in `data/state.json`, or in `$DATA_DIR/state.json` when `DATA_DI
 - `show_hole_count` — reads the current snapshot and renders the card.
 - `set_morning_count` — replaces the current snapshot.
 - `break_out_guitars` — decrements one or more categories in one call.
+- `correct_hole_count` — sets observed remaining counts while preserving breakout progress.
 - `adjust_hole_balance` — applies signed corrections to one or more categories.
 
 Only `show_hole_count` links to the UI resource. Mutations return the same authoritative structured snapshot, allowing the mounted widget to update without remounting.

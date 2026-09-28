@@ -7,7 +7,7 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-export const WIDGET_URI = "ui://guitar-hole-count/v2.html";
+export const WIDGET_URI = "ui://guitar-hole-count/v3.html";
 
 const rowSchema = z.object({
   label: z.string(),
@@ -63,10 +63,10 @@ async function mutate(store, action, message) {
 export function createHoleCountMcpServer({ store, widgetPath }) {
   const widgetHtml = readFileSync(widgetPath, "utf8");
   const server = new McpServer(
-    { name: "guitar-hole-count", version: "1.0.0" },
+    { name: "guitar-hole-count", version: "1.1.0" },
     {
       instructions:
-        "This app tracks one current guitar-wall snapshot. After a successful model-initiated mutation, call show_hole_count to display the updated interactive card. Never invent categories or allow a balance below zero.",
+        "This app tracks one current guitar-wall snapshot. Use break_out_guitars for real breakouts, correct_hole_count when an observed count was entered incorrectly, and adjust_hole_balance to undo or correct breakout progress. After a successful model-initiated mutation, call show_hole_count to display the updated interactive card. Never invent categories or allow a balance below zero.",
     }
   );
 
@@ -87,7 +87,7 @@ export function createHoleCountMcpServer({ store, widgetPath }) {
               csp: { connectDomains: [], resourceDomains: [] },
             },
             "openai/widgetDescription":
-              "Interactive Guitar Wall card showing remaining holes with one-tap decrement controls and a morning-count editor.",
+              "Interactive Guitar Wall card with editable remaining counts, one-tap breakout and undo controls, and a zeroed morning-count editor.",
             "openai/widgetPrefersBorder": true,
           },
         },
@@ -178,6 +178,40 @@ export function createHoleCountMcpServer({ store, widgetPath }) {
     },
     async ({ breakouts }) =>
       mutate(store, () => store.breakOut(breakouts), "Guitar wall balance updated.")
+  );
+
+  registerAppTool(
+    server,
+    "correct_hole_count",
+    {
+      title: "Correct observed guitar hole count",
+      description:
+        "Use this when an existing displayed hole count itself was entered or counted incorrectly. Set one or more absolute remaining counts while preserving legitimate guitars already broken out. Do not use this for a new morning or for an actual breakout. Afterward call show_hole_count.",
+      inputSchema: {
+        corrections: z
+          .array(
+            z.object({
+              label: z.string().min(1).describe("Existing brand or category"),
+              remaining: z
+                .number()
+                .int()
+                .nonnegative()
+                .describe("Correct absolute number of remaining empty holes"),
+            })
+          )
+          .min(1),
+      },
+      outputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: modelAndAppVisibility,
+    },
+    async ({ corrections }) =>
+      mutate(store, () => store.correctCount(corrections), "Observed hole count corrected.")
   );
 
   registerAppTool(

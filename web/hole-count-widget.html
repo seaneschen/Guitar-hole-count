@@ -17,6 +17,7 @@
         --accent: light-dark(#171717, #f4f4f4);
         --accent-text: light-dark(#ffffff, #171717);
         --danger: #c43b3b;
+        --success: light-dark(#287a47, #66c989);
       }
 
       * { box-sizing: border-box; }
@@ -33,7 +34,7 @@
         background: var(--bg);
       }
 
-      .view { padding: 18px; }
+      .view { padding: 16px; }
       .hidden { display: none !important; }
 
       .topline {
@@ -41,7 +42,7 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
       }
 
       .eyebrow {
@@ -56,6 +57,7 @@
       .total {
         display: block;
         font-size: 44px;
+        font-variant-numeric: tabular-nums;
         font-weight: 780;
         letter-spacing: -0.05em;
         line-height: 0.9;
@@ -69,34 +71,62 @@
 
       .rows {
         display: flex;
+        max-height: 400px;
         flex-direction: column;
-        border-top: 1px solid var(--line);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border-block: 1px solid var(--line);
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
       }
 
       .count-row {
-        min-height: 58px;
+        min-height: 50px;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto;
+        flex: 0 0 auto;
+        grid-template-columns: minmax(0, 1fr) 74px 44px;
         align-items: center;
-        gap: 11px;
+        gap: 9px;
         border-bottom: 1px solid var(--line);
       }
+      .count-row:last-child { border-bottom: 0; }
 
       .label {
         min-width: 0;
         overflow: hidden;
+        font-size: 15px;
         font-weight: 640;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      .zero-row .label { color: var(--muted); }
 
-      .balance { min-width: 80px; text-align: right; }
-      .remaining { font-size: 20px; font-weight: 740; }
-      .remaining-word { color: var(--muted); font-size: 11px; }
+      .remaining-input {
+        width: 74px;
+        height: 36px;
+        padding: 0 8px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        outline: none;
+        background: var(--surface);
+        color: var(--text);
+        font-size: 19px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 740;
+        text-align: center;
+        transition: background 120ms ease, border-color 120ms ease;
+      }
+      .remaining-input:hover { background: var(--surface); }
+      .remaining-input:focus {
+        border-color: var(--muted);
+        background: var(--surface);
+      }
+      .remaining-input[aria-invalid="true"] { border-color: var(--danger); }
+      .remaining-input:disabled { opacity: 0.65; }
 
       .minus {
-        width: 42px;
-        height: 38px;
+        width: 44px;
+        height: 40px;
         border: 0;
         border-radius: 11px;
         background: var(--surface-strong);
@@ -107,22 +137,49 @@
       }
       .minus:hover:not(:disabled) { filter: brightness(0.96); }
       .minus:active:not(:disabled) { transform: scale(0.97); }
-      .minus:disabled { cursor: default; opacity: 0.38; }
+      .minus:disabled { cursor: default; opacity: 0.34; }
 
       .summary {
         display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 29px;
+        padding-top: 10px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .summary span:last-child { text-align: right; }
+      .sync-status.success { color: var(--success); }
+      .sync-status.error { color: var(--danger); }
+
+      .undo-bar {
+        display: flex;
+        min-height: 42px;
+        align-items: center;
         justify-content: space-between;
         gap: 10px;
-        margin-top: 13px;
-        color: var(--muted);
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: var(--surface);
         font-size: 12px;
+      }
+      .undo-button {
+        min-height: 30px;
+        padding: 0 8px;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        font-weight: 720;
       }
 
       .actions {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-top: 15px;
+        margin-top: 12px;
       }
 
       .button {
@@ -149,15 +206,25 @@
         letter-spacing: -0.02em;
       }
       .editor-subtitle {
-        margin: 5px 0 15px;
+        margin: 5px 0 13px;
         color: var(--muted);
         font-size: 13px;
       }
 
-      .entry-list { display: flex; flex-direction: column; gap: 8px; }
+      .entry-list {
+        display: flex;
+        max-height: 390px;
+        flex-direction: column;
+        gap: 7px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-right: 2px;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+      }
       .entry-row {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 78px 34px;
+        grid-template-columns: minmax(0, 1fr) 76px 34px;
         gap: 8px;
       }
       .entry-row input {
@@ -171,7 +238,11 @@
         color: var(--text);
       }
       .entry-row input:focus { border-color: var(--muted); }
-      .entry-row input[type="number"] { text-align: center; }
+      .entry-row input[aria-invalid="true"] { border-color: var(--danger); }
+      .entry-row input[type="number"] {
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+      }
       .remove-row {
         border: 0;
         background: transparent;
@@ -183,17 +254,21 @@
       .editor-total {
         display: flex;
         justify-content: space-between;
-        margin-top: 12px;
-        padding-top: 12px;
+        margin-top: 11px;
+        padding-top: 11px;
         border-top: 1px solid var(--line);
         color: var(--muted);
         font-size: 13px;
       }
-      .editor-total strong { color: var(--text); font-size: 18px; }
+      .editor-total strong {
+        color: var(--text);
+        font-size: 18px;
+        font-variant-numeric: tabular-nums;
+      }
 
       .error {
         min-height: 18px;
-        margin-top: 8px;
+        margin-top: 7px;
         color: var(--danger);
         font-size: 12px;
       }
@@ -202,10 +277,24 @@
       .empty-number { font-size: 38px; font-weight: 760; }
       .empty-copy { margin: 6px 0 15px; color: var(--muted); font-size: 13px; }
 
+      .flash { animation: value-flash 480ms ease-out; }
+      @keyframes value-flash {
+        0% { background: var(--surface-strong); transform: scale(1.05); }
+        100% { background: transparent; transform: scale(1); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
       @media (max-width: 340px) {
         .view { padding: 14px; }
         .total { font-size: 38px; }
-        .balance { min-width: 68px; }
+        .count-row { grid-template-columns: minmax(0, 1fr) 66px 42px; gap: 7px; }
+        .remaining-input { width: 66px; }
       }
     </style>
   </head>
@@ -221,8 +310,12 @@
         </div>
         <div id="count-rows" class="rows"></div>
         <div class="summary">
-          <span id="broken-summary">0 guitars broken out</span>
-          <span id="starting-summary">0 starting holes</span>
+          <span id="activity-summary">0 broken out · 0 starting</span>
+          <span id="sync-status" class="sync-status" aria-live="polite"></span>
+        </div>
+        <div id="undo-bar" class="undo-bar hidden" aria-live="polite">
+          <span id="undo-message"></span>
+          <button id="undo-action" class="undo-button" type="button">Undo</button>
         </div>
         <div class="actions">
           <button id="new-morning" class="button ghost" type="button">Enter new morning count</button>
@@ -241,7 +334,7 @@
 
       <section id="editor-view" class="view hidden">
         <h2 class="editor-title">Morning hole count</h2>
-        <p class="editor-subtitle">Saving replaces the current count and resets today’s breakout progress.</p>
+        <p class="editor-subtitle">Every count starts at zero. Saving replaces the current day and resets breakout progress.</p>
         <form id="morning-form" autocomplete="off">
           <div id="entry-list" class="entry-list"></div>
           <div class="editor-total">
@@ -251,6 +344,7 @@
           <div id="editor-error" class="error" aria-live="polite"></div>
           <div class="actions">
             <button id="add-row" class="button" type="button">+ Add row</button>
+            <button id="clear-counts" class="button ghost" type="button">Clear counts</button>
             <button id="cancel-editor" class="button ghost" type="button">Cancel</button>
             <button id="save-morning" class="button primary" type="submit">Save</button>
           </div>
@@ -264,9 +358,12 @@
       const editorView = document.querySelector("#editor-view");
       const countRows = document.querySelector("#count-rows");
       const totalRemaining = document.querySelector("#total-remaining");
-      const brokenSummary = document.querySelector("#broken-summary");
-      const startingSummary = document.querySelector("#starting-summary");
+      const activitySummary = document.querySelector("#activity-summary");
+      const syncStatus = document.querySelector("#sync-status");
       const countError = document.querySelector("#count-error");
+      const undoBar = document.querySelector("#undo-bar");
+      const undoMessage = document.querySelector("#undo-message");
+      const undoAction = document.querySelector("#undo-action");
       const entryList = document.querySelector("#entry-list");
       const editorTotal = document.querySelector("#editor-total");
       const editorError = document.querySelector("#editor-error");
@@ -282,14 +379,57 @@
 
       let snapshot = emptySnapshot();
       let busy = false;
+      let flashLabel = null;
+      let undoState = null;
+      let undoTimer = null;
+      let statusTimer = null;
 
       function showOnly(element) {
         [countView, emptyView, editorView].forEach((view) => view.classList.add("hidden"));
         element.classList.remove("hidden");
       }
 
-      function renderSnapshot() {
-        countError.textContent = "";
+      function updatedStatus() {
+        if (!snapshot.updatedAt) return "";
+        const updated = new Date(snapshot.updatedAt);
+        if (Number.isNaN(updated.getTime())) return "";
+        if (Date.now() - updated.getTime() < 60_000) return "Updated just now";
+        return `Updated ${updated.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+      }
+
+      function setSyncStatus(text, tone = "", restoreAfter = 0) {
+        clearTimeout(statusTimer);
+        syncStatus.textContent = text;
+        syncStatus.className = `sync-status${tone ? ` ${tone}` : ""}`;
+        if (restoreAfter) {
+          statusTimer = setTimeout(() => setSyncStatus(updatedStatus()), restoreAfter);
+        }
+      }
+
+      function renderUndo() {
+        if (!undoState) {
+          undoBar.classList.add("hidden");
+          return;
+        }
+        undoMessage.textContent = `${undoState.label} reduced to ${undoState.remaining}`;
+        undoAction.disabled = busy;
+        undoBar.classList.remove("hidden");
+      }
+
+      function clearUndo() {
+        clearTimeout(undoTimer);
+        undoState = null;
+        renderUndo();
+      }
+
+      function offerUndo(label, remaining) {
+        clearTimeout(undoTimer);
+        undoState = { label, remaining };
+        renderUndo();
+        undoTimer = setTimeout(clearUndo, 8_000);
+      }
+
+      function renderSnapshot({ preserveStatus = false } = {}) {
         if (!snapshot.initialized) {
           showOnly(emptyView);
           return;
@@ -297,27 +437,35 @@
 
         showOnly(countView);
         totalRemaining.textContent = snapshot.totals.remaining;
-        brokenSummary.textContent = `${snapshot.totals.brokenOut} guitar${snapshot.totals.brokenOut === 1 ? "" : "s"} broken out`;
-        startingSummary.textContent = `${snapshot.totals.starting} starting holes`;
+        activitySummary.textContent = `${snapshot.totals.brokenOut} guitar${snapshot.totals.brokenOut === 1 ? "" : "s"} broken out · ${snapshot.totals.starting} starting`;
+        if (!preserveStatus) setSyncStatus(updatedStatus());
         countRows.replaceChildren();
 
         for (const row of snapshot.rows) {
           const wrap = document.createElement("div");
-          wrap.className = "count-row";
+          wrap.className = `count-row${row.remaining === 0 ? " zero-row" : ""}`;
 
           const label = document.createElement("div");
           label.className = "label";
           label.textContent = row.label;
 
-          const balance = document.createElement("div");
-          balance.className = "balance";
-          const remaining = document.createElement("span");
-          remaining.className = "remaining";
-          remaining.textContent = row.remaining;
-          const remainingWord = document.createElement("span");
-          remainingWord.className = "remaining-word";
-          remainingWord.textContent = " remaining";
-          balance.append(remaining, remainingWord);
+          const remaining = document.createElement("input");
+          remaining.className = "remaining-input";
+          if (flashLabel === row.label) remaining.classList.add("flash");
+          remaining.type = "number";
+          remaining.min = "0";
+          remaining.step = "1";
+          remaining.inputMode = "numeric";
+          remaining.value = row.remaining;
+          remaining.disabled = busy;
+          remaining.setAttribute("aria-label", `${row.label} remaining holes`);
+          remaining.addEventListener("focus", () => remaining.select());
+          remaining.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            remaining.blur();
+          });
+          remaining.addEventListener("change", () => correctObservedCount(row.label, remaining));
 
           const minus = document.createElement("button");
           minus.className = "minus";
@@ -328,9 +476,11 @@
           minus.disabled = busy || row.remaining < 1;
           minus.addEventListener("click", () => breakOutOne(row.label));
 
-          wrap.append(label, balance, minus);
+          wrap.append(label, remaining, minus);
           countRows.appendChild(wrap);
         }
+        flashLabel = null;
+        renderUndo();
       }
 
       function addEditorRow(label = "", count = "") {
@@ -356,39 +506,58 @@
         let total = 0;
         for (const input of entryList.querySelectorAll(".entry-count")) {
           const value = Number(input.value);
-          if (Number.isInteger(value) && value >= 0) total += value;
+          if (input.value !== "" && Number.isInteger(value) && value >= 0) total += value;
         }
         editorTotal.textContent = total;
       }
 
       function openEditor() {
+        clearUndo();
         entryList.replaceChildren();
         editorError.textContent = "";
         if (snapshot.rows.length) {
-          for (const row of snapshot.rows) addEditorRow(row.label, "");
+          for (const row of snapshot.rows) addEditorRow(row.label, 0);
         } else {
           addEditorRow();
         }
         updateEditorTotal();
         showOnly(editorView);
-        setTimeout(() => entryList.querySelector("input")?.focus(), 0);
+        setTimeout(() => entryList.querySelector(".entry-count, input")?.focus(), 0);
+      }
+
+      function clearEditorValidity() {
+        for (const input of entryList.querySelectorAll("input")) {
+          input.removeAttribute("aria-invalid");
+        }
+      }
+
+      function invalid(input, message) {
+        input.setAttribute("aria-invalid", "true");
+        input.focus();
+        throw new Error(message);
       }
 
       function readEditorCounts() {
+        clearEditorValidity();
         const counts = [];
-        const labels = new Set();
+        const labels = new Map();
         for (const row of entryList.querySelectorAll(".entry-row")) {
-          const label = row.querySelector(".entry-label").value.trim().replace(/\s+/g, " ");
-          const raw = row.querySelector(".entry-count").value;
+          const labelInput = row.querySelector(".entry-label");
+          const countInput = row.querySelector(".entry-count");
+          const label = labelInput.value.trim().replace(/\s+/g, " ");
+          const raw = countInput.value;
           if (!label && raw === "") continue;
+          if (!label) invalid(labelInput, "Every count needs a brand or category.");
           const count = Number(raw);
-          if (!label) throw new Error("Every count needs a brand or category.");
-          if (!Number.isInteger(count) || count < 0) {
-            throw new Error(`Enter a whole-number count for ${label}.`);
+          if (raw === "" || !Number.isInteger(count) || count < 0) {
+            invalid(countInput, `Enter a whole-number count for ${label}.`);
           }
           const key = label.toLocaleLowerCase();
-          if (labels.has(key)) throw new Error(`Remove the duplicate row for ${label}.`);
-          labels.add(key);
+          if (labels.has(key)) {
+            labels.get(key).setAttribute("aria-invalid", "true");
+            invalid(labelInput, `Remove the duplicate row for ${label}.`);
+          }
+          labels.set(key, labelInput);
           counts.push({ label, count });
         }
         if (!counts.length) throw new Error("Enter at least one count.");
@@ -404,8 +573,6 @@
           snapshot = response.structuredContent.snapshot;
           if (render) renderSnapshot();
         }
-        const text = responseText(response);
-        if (response?.isError && text && render) countError.textContent = text;
       }
 
       let rpcId = 0;
@@ -438,14 +605,14 @@
         }
 
         if (message.method === "ui/notifications/tool-result") {
-          updateFromResponse(message.params);
+          updateFromResponse(message.params, { render: !busy });
         }
       }, { passive: true });
 
       const bridgeReady = hasHost
         ? (async () => {
             await rpcRequest("ui/initialize", {
-              appInfo: { name: "guitar-hole-count-card", version: "1.0.0" },
+              appInfo: { name: "guitar-hole-count-card", version: "1.1.0" },
               appCapabilities: {},
               protocolVersion: "2026-01-26",
             });
@@ -461,6 +628,17 @@
         return response;
       }
 
+      function recalculateTotals() {
+        snapshot.totals = snapshot.rows.reduce(
+          (totals, row) => ({
+            starting: totals.starting + row.starting,
+            remaining: totals.remaining + row.remaining,
+            brokenOut: totals.brokenOut + row.brokenOut,
+          }),
+          { starting: 0, remaining: 0, brokenOut: 0 }
+        );
+      }
+
       function applyStandaloneTool(name, args, options) {
         if (name === "set_morning_count") {
           snapshot = {
@@ -471,18 +649,78 @@
               remaining: count,
               brokenOut: 0,
             })),
-            totals: {
-              starting: args.counts.reduce((sum, item) => sum + item.count, 0),
-              remaining: args.counts.reduce((sum, item) => sum + item.count, 0),
-              brokenOut: 0,
-            },
+            totals: { starting: 0, remaining: 0, brokenOut: 0 },
             updatedAt: new Date().toISOString(),
             revision: snapshot.revision + 1,
           };
+          recalculateTotals();
+        } else if (name === "correct_hole_count") {
+          for (const correction of args.corrections) {
+            const row = snapshot.rows.find((item) => item.label === correction.label);
+            if (!row) continue;
+            row.starting = correction.remaining + row.brokenOut;
+            row.remaining = correction.remaining;
+          }
+          recalculateTotals();
+        } else if (name === "adjust_hole_balance") {
+          for (const adjustment of args.adjustments) {
+            const row = snapshot.rows.find((item) => item.label === adjustment.label);
+            if (!row) continue;
+            row.remaining += adjustment.delta;
+            row.brokenOut = row.starting - row.remaining;
+          }
+          recalculateTotals();
         }
+        snapshot.updatedAt = new Date().toISOString();
         const response = { structuredContent: { snapshot }, content: [] };
         updateFromResponse(response, options);
         return response;
+      }
+
+      async function correctObservedCount(label, input) {
+        if (busy) return;
+        const remaining = Number(input.value);
+        const row = snapshot.rows.find((item) => item.label === label);
+        if (!row) return;
+        if (input.value === "" || !Number.isInteger(remaining) || remaining < 0) {
+          input.setAttribute("aria-invalid", "true");
+          countError.textContent = `Enter a whole-number count for ${label}.`;
+          return;
+        }
+        if (remaining === row.remaining) return;
+
+        const before = structuredClone(snapshot);
+        const delta = remaining - row.remaining;
+        row.remaining = remaining;
+        row.starting += delta;
+        snapshot.totals.remaining += delta;
+        snapshot.totals.starting += delta;
+        clearUndo();
+        countError.textContent = "";
+        busy = true;
+        flashLabel = label;
+        setSyncStatus("Saving…");
+        renderSnapshot({ preserveStatus: true });
+
+        try {
+          const response = await callTool(
+            "correct_hole_count",
+            { corrections: [{ label, remaining }] },
+            { render: false }
+          );
+          if (response?.isError) throw new Error(responseText(response) || "Couldn’t save the correction.");
+          busy = false;
+          flashLabel = label;
+          renderSnapshot({ preserveStatus: true });
+          setSyncStatus("Saved", "success", 1_300);
+        } catch (error) {
+          snapshot = before;
+          busy = false;
+          renderSnapshot({ preserveStatus: true });
+          countError.textContent = error instanceof Error ? error.message : "Couldn’t save the correction.";
+          setSyncStatus("Couldn’t save", "error");
+          console.error(error);
+        }
       }
 
       async function breakOutOne(label) {
@@ -491,35 +729,96 @@
         const row = snapshot.rows.find((item) => item.label === label);
         if (!row || row.remaining < 1) return;
 
-        // Optimistic render makes the visible balance change on the tap itself;
-        // the authoritative server snapshot replaces it as soon as the call returns.
         row.remaining -= 1;
         row.brokenOut += 1;
         snapshot.totals.remaining -= 1;
         snapshot.totals.brokenOut += 1;
+        clearUndo();
+        countError.textContent = "";
         busy = true;
-        renderSnapshot();
+        flashLabel = label;
+        setSyncStatus("Saving…");
+        renderSnapshot({ preserveStatus: true });
 
         try {
           if (hasHost) {
-            await callTool("break_out_guitars", {
-              breakouts: [{ label, quantity: 1 }],
-            });
+            const response = await callTool(
+              "break_out_guitars",
+              { breakouts: [{ label, quantity: 1 }] },
+              { render: false }
+            );
+            if (response?.isError) throw new Error(responseText(response) || "Couldn’t update the count.");
+          } else {
+            snapshot.updatedAt = new Date().toISOString();
           }
+          busy = false;
+          flashLabel = label;
+          renderSnapshot({ preserveStatus: true });
+          const savedRow = snapshot.rows.find((item) => item.label === label);
+          offerUndo(label, savedRow?.remaining ?? 0);
+          setSyncStatus("Saved", "success", 1_300);
         } catch (error) {
           snapshot = before;
-          countError.textContent = "Couldn’t update the count.";
-          console.error(error);
-        } finally {
           busy = false;
-          renderSnapshot();
+          renderSnapshot({ preserveStatus: true });
+          countError.textContent = error instanceof Error ? error.message : "Couldn’t update the count.";
+          setSyncStatus("Couldn’t save", "error");
+          console.error(error);
+        }
+      }
+
+      async function undoLastBreakout() {
+        if (busy || !undoState) return;
+        const action = undoState;
+        const before = structuredClone(snapshot);
+        clearUndo();
+        const row = snapshot.rows.find((item) => item.label === action.label);
+        if (!row || row.brokenOut < 1) return;
+
+        row.remaining += 1;
+        row.brokenOut -= 1;
+        snapshot.totals.remaining += 1;
+        snapshot.totals.brokenOut -= 1;
+        busy = true;
+        flashLabel = action.label;
+        setSyncStatus("Saving…");
+        renderSnapshot({ preserveStatus: true });
+
+        try {
+          if (hasHost) {
+            const response = await callTool(
+              "adjust_hole_balance",
+              { adjustments: [{ label: action.label, delta: 1 }] },
+              { render: false }
+            );
+            if (response?.isError) throw new Error(responseText(response) || "Couldn’t undo that change.");
+          } else {
+            snapshot.updatedAt = new Date().toISOString();
+          }
+          busy = false;
+          flashLabel = action.label;
+          renderSnapshot({ preserveStatus: true });
+          setSyncStatus("Undone", "success", 1_300);
+        } catch (error) {
+          snapshot = before;
+          busy = false;
+          undoState = action;
+          renderSnapshot({ preserveStatus: true });
+          countError.textContent = error instanceof Error ? error.message : "Couldn’t undo that change.";
+          setSyncStatus("Couldn’t save", "error");
+          console.error(error);
         }
       }
 
       document.querySelector("#new-morning").addEventListener("click", openEditor);
       document.querySelector("#start-morning").addEventListener("click", openEditor);
       document.querySelector("#add-row").addEventListener("click", () => addEditorRow());
+      document.querySelector("#clear-counts").addEventListener("click", () => {
+        for (const input of entryList.querySelectorAll(".entry-count")) input.value = 0;
+        updateEditorTotal();
+      });
       document.querySelector("#cancel-editor").addEventListener("click", renderSnapshot);
+      undoAction.addEventListener("click", undoLastBreakout);
 
       document.querySelector("#morning-form").addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -534,7 +833,9 @@
           if (response?.isError) {
             editorError.textContent = responseText(response) || "Couldn’t save the count.";
           } else {
-            renderSnapshot();
+            busy = false;
+            renderSnapshot({ preserveStatus: true });
+            setSyncStatus("Saved", "success", 1_300);
           }
         } catch (error) {
           editorError.textContent = error instanceof Error ? error.message : "Couldn’t save the count.";
@@ -542,7 +843,6 @@
           busy = false;
           saveMorning.disabled = false;
           saveMorning.textContent = "Save";
-          if (!countView.classList.contains("hidden")) renderSnapshot();
         }
       });
 

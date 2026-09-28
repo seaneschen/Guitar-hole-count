@@ -87,6 +87,51 @@ test("corrections put holes back but cannot exceed the morning count", async () 
   );
 });
 
+test("editing an observed count preserves legitimate breakout progress", async () => {
+  await store.setMorningCount([{ label: "Fender", count: 17 }]);
+  await store.breakOut([{ label: "Fender", quantity: 6 }]);
+
+  await store.correctCount([{ label: "fender", remaining: 12 }]);
+  let snapshot = await store.snapshot();
+  assert.deepEqual(snapshot.rows[0], {
+    label: "Fender",
+    starting: 18,
+    remaining: 12,
+    brokenOut: 6,
+  });
+
+  const revision = snapshot.revision;
+  await store.correctCount([{ label: "Fender", remaining: 12 }]);
+  snapshot = await store.snapshot();
+  assert.equal(snapshot.revision, revision);
+  assert.equal(snapshot.totals.brokenOut, 6);
+});
+
+test("multiple observed-count corrections are atomic", async () => {
+  await store.setMorningCount([
+    { label: "Fender", count: 5 },
+    { label: "Ibanez", count: 4 },
+  ]);
+  await store.breakOut([
+    { label: "Fender", quantity: 2 },
+    { label: "Ibanez", quantity: 1 },
+  ]);
+
+  await assert.rejects(
+    () =>
+      store.correctCount([
+        { label: "Fender", remaining: 4 },
+        { label: "Unknown", remaining: 2 },
+      ]),
+    /No current row/
+  );
+  assert.deepEqual((await store.snapshot()).totals, {
+    starting: 9,
+    remaining: 6,
+    brokenOut: 3,
+  });
+});
+
 test("the current snapshot survives a fresh store instance", async () => {
   await store.setMorningCount([{ label: "Fender", count: 5 }]);
   await store.breakOut([{ label: "Fender", quantity: 2 }]);

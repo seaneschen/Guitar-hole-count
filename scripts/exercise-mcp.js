@@ -16,6 +16,7 @@ try {
       "show_hole_count",
       "set_morning_count",
       "break_out_guitars",
+      "correct_hole_count",
       "adjust_hole_balance",
     ]
   );
@@ -46,11 +47,18 @@ try {
   });
   assert.equal(multiBreakout.structuredContent.snapshot.totals.remaining, 33);
 
+  const observedCorrection = await client.callTool({
+    name: "correct_hole_count",
+    arguments: { corrections: [{ label: "Fender", remaining: 15 }] },
+  });
+  assert.equal(observedCorrection.structuredContent.snapshot.rows[0].starting, 18);
+  assert.equal(observedCorrection.structuredContent.snapshot.totals.brokenOut, 5);
+
   const correction = await client.callTool({
     name: "adjust_hole_balance",
     arguments: { adjustments: [{ label: "Fender", delta: 1 }] },
   });
-  assert.equal(correction.structuredContent.snapshot.totals.remaining, 34);
+  assert.equal(correction.structuredContent.snapshot.totals.remaining, 35);
 
   // Verify that a fresh morning replaces all progress, then leave a useful
   // demo snapshot matching the product card in the project brief.

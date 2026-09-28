@@ -217,6 +217,50 @@ export class HoleCountStore {
     });
   }
 
+  correctCount(entries) {
+    return this.#mutate(async () => {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        throw new Error("Provide at least one corrected hole count.");
+      }
+
+      const state = await this.#readStateFile();
+      if (Object.keys(state.counts).length === 0) {
+        throw new Error("Enter a morning hole count first.");
+      }
+
+      const corrections = new Map();
+      for (const entry of entries) {
+        const remaining = Number(entry?.remaining);
+        if (!Number.isInteger(remaining) || remaining < 0) {
+          throw new Error("Each corrected count must be a whole number of 0 or more.");
+        }
+        const storedLabel = findStoredLabel(state, entry?.label);
+        if (!storedLabel) {
+          throw new Error(`No current row named “${cleanLabel(entry?.label)}”.`);
+        }
+        if (corrections.has(storedLabel)) {
+          throw new Error(`Only provide one corrected count for ${storedLabel}.`);
+        }
+        corrections.set(storedLabel, remaining);
+      }
+
+      let changed = false;
+      for (const [label, remaining] of corrections) {
+        const count = state.counts[label];
+        if (count.remaining === remaining) continue;
+        const brokenOut = count.starting - count.remaining;
+        count.starting = remaining + brokenOut;
+        count.remaining = remaining;
+        changed = true;
+      }
+
+      if (!changed) return state;
+      state.updatedAt = new Date().toISOString();
+      state.revision += 1;
+      return this.#writeState(state);
+    });
+  }
+
   adjustBalance(entries) {
     return this.#mutate(async () => {
       if (!Array.isArray(entries) || entries.length === 0) {

@@ -31,7 +31,7 @@ after(async () => {
   await rm(dataDir, { recursive: true, force: true });
 });
 
-test("the MCP endpoint advertises the four focused tools and UI only on show", async () => {
+test("the MCP endpoint advertises the five focused tools and UI only on show", async () => {
   const result = await client.listTools();
   assert.deepEqual(
     result.tools.map((tool) => tool.name),
@@ -39,6 +39,7 @@ test("the MCP endpoint advertises the four focused tools and UI only on show", a
       "show_hole_count",
       "set_morning_count",
       "break_out_guitars",
+      "correct_hole_count",
       "adjust_hole_balance",
     ]
   );
@@ -82,8 +83,18 @@ test("tools mutate and return the authoritative structured snapshot", async () =
   assert.equal(updated.structuredContent.snapshot.totals.remaining, 33);
   assert.equal(updated.structuredContent.snapshot.totals.brokenOut, 5);
 
+  const corrected = await client.callTool({
+    name: "correct_hole_count",
+    arguments: {
+      corrections: [{ label: "Fender", remaining: 15 }],
+    },
+  });
+  assert.equal(corrected.structuredContent.snapshot.rows[0].starting, 18);
+  assert.equal(corrected.structuredContent.snapshot.rows[0].remaining, 15);
+  assert.equal(corrected.structuredContent.snapshot.totals.brokenOut, 5);
+
   const shown = await client.callTool({ name: "show_hole_count", arguments: {} });
-  assert.equal(shown.structuredContent.snapshot.totals.remaining, 33);
+  assert.equal(shown.structuredContent.snapshot.totals.remaining, 34);
 });
 
 test("invalid tool input leaves the current snapshot unchanged", async () => {
@@ -92,7 +103,7 @@ test("invalid tool input leaves the current snapshot unchanged", async () => {
     arguments: { breakouts: [{ label: "Gibson", quantity: 99 }] },
   });
   assert.equal(failed.isError, true);
-  assert.equal(failed.structuredContent.snapshot.totals.remaining, 33);
+  assert.equal(failed.structuredContent.snapshot.totals.remaining, 34);
 });
 
 test("the health endpoint reports the persisted snapshot", async () => {
@@ -100,5 +111,5 @@ test("the health endpoint reports the persisted snapshot", async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.status, "ok");
-  assert.equal(body.snapshot.totals.remaining, 33);
+  assert.equal(body.snapshot.totals.remaining, 34);
 });
