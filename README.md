@@ -119,11 +119,13 @@ its six digits on the r1:
 ```
 
 The public HTTPS service address is stored in plain creation storage. The
-one-time code is exchanged for a revocable device token, distinct from the
-Mac mini's service credential. The creation stores that token in secure
-storage and also in creation-isolated plain storage as a compatibility fallback
-for OS3 builds that do not reliably retain secure storage after closing a
-creation. When the Mac mini cannot be reached, the creation displays its last
+one-time code is exchanged for a revocable device token, distinct from the Mac
+mini's service credential. Because current OS3 builds may clear both secure and
+plain creation storage during a full reboot, the production install QR carries
+that token in the creation URL fragment. URL fragments are retained as part of
+the installed creation address but are never sent in HTTP requests to GitHub or
+ngrok. Storage copies remain as a convenience for ordinary close and reopen
+cycles. When the Mac mini cannot be reached, the creation displays its last
 cached snapshot but disables mutations instead of allowing the r1 and ChatGPT
 values to diverge.
 

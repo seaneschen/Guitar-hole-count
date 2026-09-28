@@ -9,6 +9,7 @@ import {
   ApiError,
   HoleCountApi,
   clampCount,
+  installTokenFromHash,
   stepCarousel,
   zeroedMorningRows,
 } from "../r1/core.js";
@@ -47,6 +48,13 @@ test("carousel math clamps counts and morning rows start at zero", () => {
     zeroedMorningRows({ rows: [{ label: "Fender", remaining: 8 }] }),
     [{ label: "Fender", count: 0 }]
   );
+});
+
+test("the installed creation URL can carry a reboot-stable device token", () => {
+  const token = "a".repeat(43);
+  assert.equal(installTokenFromHash(`#device=${token}`), token);
+  assert.equal(installTokenFromHash("#device=too-short"), null);
+  assert.equal(installTokenFromHash(""), null);
 });
 
 test("a temporary code pairs once without exposing a permanent key in the creation", async () => {
@@ -129,6 +137,7 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   assert.match(appJs, /addEventListener\("sideClick"/);
   assert.match(appJs, /creationStorage\.secure/);
   assert.match(appJs, /STORAGE\.session/);
+  assert.match(appJs, /installTokenFromHash\(location\.hash\)/);
   assert.match(appJs, /HoleCountApi\.pair/);
   assert.match(appJs, /zeroedMorningRows/);
 });
