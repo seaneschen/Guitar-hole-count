@@ -34,7 +34,10 @@ function sendJson(res, status, value) {
 function setR1Cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "authorization, content-type");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "authorization, content-type, ngrok-skip-browser-warning"
+  );
   res.setHeader("Cache-Control", "no-store");
 }
 

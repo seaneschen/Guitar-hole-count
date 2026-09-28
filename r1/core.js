@@ -47,6 +47,7 @@ export class HoleCountApi {
       method,
       headers: {
         Authorization: `Bearer ${this.token}`,
+        "ngrok-skip-browser-warning": "1",
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
