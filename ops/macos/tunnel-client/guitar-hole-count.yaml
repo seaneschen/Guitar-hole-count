@@ -1,0 +1,16 @@
+config_version: 1
+control_plane:
+  base_url: "https://api.openai.com"
+  tunnel_id: "tunnel_6ab97e25d3d88191bfaede0cb6c50c70"
+  api_key: "file:/Users/seaneschen/Library/Application Support/GuitarHoleCount/secrets/control-plane.key"
+health:
+  listen_addr: "127.0.0.1:8788"
+admin_ui:
+  open_browser: false
+log:
+  level: info
+  format: json
+mcp:
+  server_urls:
+    - channel: main
+      url: "http://127.0.0.1:8787/mcp"

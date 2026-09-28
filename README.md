@@ -11,7 +11,7 @@ A deliberately tiny ChatGPT MCP App for one job: enter the guitar-wall hole coun
 - The ChatGPT card has a one-tap `−` control with an immediate optimistic update.
 - The card includes a focused morning-count editor.
 
-State is stored in `data/state.json`, or in `$DATA_DIR/state.json` when `DATA_DIR` is set.
+State is stored in `data/state.json`, or in `$DATA_DIR/state.json` when `DATA_DIR` is set. Each successful mutation also refreshes `state.backup.json`; if the primary file is ever unreadable, the service falls back to that redundant snapshot.
 
 ## MCP tools
 
@@ -40,7 +40,7 @@ npm test
 npm start
 ```
 
-Local URLs:
+The server binds to the loopback interface by default, so it is not directly exposed to other devices on the local network. Local URLs:
 
 - MCP endpoint: `http://localhost:8787/mcp`
 - Health/current snapshot: `http://localhost:8787/`
@@ -48,28 +48,28 @@ Local URLs:
 
 ## Connect from ChatGPT
 
-ChatGPT needs a public HTTPS endpoint for local development. Start the server, then start the included local Cloudflare Tunnel binary:
+This Mac uses OpenAI Secure MCP Tunnel for the permanent connection. The MCP server stays private on `127.0.0.1`; the tunnel client makes an outbound-only connection to OpenAI, so no inbound port or public origin is exposed.
 
-```bash
-.local/cloudflared tunnel --url http://localhost:8787
+Tunnel ID:
+
+```text
+tunnel_6ab97e25d3d88191bfaede0cb6c50c70
 ```
-
-Copy the generated `https://…trycloudflare.com` URL and append `/mcp`.
 
 ### Keep the prototype running on this Mac
 
-For day-to-day use, the repository includes project-specific macOS LaunchAgents for both the MCP server and Cloudflare Tunnel. The installer copies a runnable bundle to `~/Library/Application Support/GuitarHoleCount`, outside macOS's protected Documents area. Existing live state in that runtime is preserved across redeploys. The agents start at login and macOS restarts either process if it exits:
+For day-to-day use, the repository includes project-specific macOS LaunchAgents for both the MCP server and OpenAI tunnel client. The installer copies a runnable bundle to `~/Library/Application Support/GuitarHoleCount`, outside macOS's protected Documents area. Existing live state in that runtime is preserved across redeploys. The agents start at login and macOS restarts either process if it exits:
 
 ```bash
 ./scripts/deploy-macos-launch-agents.sh
 ```
 
-Runtime logs are written under `~/Library/Application Support/GuitarHoleCount/data/`. Run the installer again after changing server or widget code. An accountless Cloudflare quick tunnel keeps the same URL while that tunnel process stays alive, but a Mac restart can produce a new URL. A named tunnel or normal HTTPS host is required for a permanently stable endpoint.
+The installer expects `CONTROL_PLANE_API_KEY` in the git-ignored `.env.local`, writes a mode-`600` runtime copy outside the repository, and never embeds the credential in a plist or YAML profile. Runtime logs are written under `~/Library/Application Support/GuitarHoleCount/data/`. Run the installer again after changing server or widget code.
 
 In ChatGPT:
 
 1. Open **Settings → Security and login** and enable **Developer mode**.
-2. Open **ChatGPT Plugins**, click **+**, and create a connection using the public HTTPS `/mcp` URL.
+2. Open **ChatGPT Plugins**, click **+**, choose **Tunnel**, and select or paste the tunnel ID above.
 3. Start a new chat, enable Guitar Hole Count from the **+ / More** menu, and prompt: `Open my guitar hole count.`
 4. Refresh the plugin connection after changing tool schemas, metadata, or the widget resource.
 
@@ -98,6 +98,8 @@ The widget uses the MCP Apps JSON-RPC bridge (`ui/initialize`, `ui/notifications
 
 ## Official implementation references
 
+- [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
+- [Connect and test your plugin](https://developers.openai.com/plugins/deploy/connect-chatgpt)
 - [MCP server and UI quickstart](https://developers.openai.com/plugins/build/app-quickstart)
 - [Build an MCP server](https://developers.openai.com/plugins/build/mcp-server)
 - [Add UI to your MCP server](https://developers.openai.com/plugins/build/chatgpt-ui)

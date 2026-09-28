@@ -6,14 +6,50 @@ runtime_root="/Users/seaneschen/Library/Application Support/GuitarHoleCount"
 launch_agents_root="/Users/seaneschen/Library/LaunchAgents"
 launch_domain="gui/$(id -u)"
 
-mkdir -p "$runtime_root/.local" "$runtime_root/data" "$launch_agents_root"
+bootstrap_agent() {
+  plist_path=$1
+  attempt=0
+  until launchctl bootstrap "$launch_domain" "$plist_path"; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 5 ]; then
+      return 1
+    fi
+    sleep 1
+  done
+}
+
+mkdir -p \
+  "$runtime_root/.local/tunnel-client" \
+  "$runtime_root/data" \
+  "$runtime_root/secrets" \
+  "$runtime_root/tunnel-client" \
+  "$launch_agents_root"
 
 ditto "$source_root/server" "$runtime_root/server"
 ditto "$source_root/web" "$runtime_root/web"
 ditto "$source_root/node_modules" "$runtime_root/node_modules"
 ditto "$source_root/.local/runtime" "$runtime_root/.local/runtime"
-cp "$source_root/.local/cloudflared" "$runtime_root/.local/cloudflared"
+cp "$source_root/.local/tunnel-client-v0.0.15/tunnel-client" \
+  "$runtime_root/.local/tunnel-client/tunnel-client"
+cp "$source_root/.local/tunnel-client-v0.0.15/cloudflared" \
+  "$runtime_root/.local/tunnel-client/cloudflared"
 cp "$source_root/package.json" "$runtime_root/package.json"
+cp "$source_root/ops/macos/tunnel-client/guitar-hole-count.yaml" \
+  "$runtime_root/tunnel-client/guitar-hole-count.yaml"
+
+if [ -f "$source_root/.env.local" ]; then
+  control_plane_api_key=$(/usr/bin/sed -n 's/^CONTROL_PLANE_API_KEY=//p' "$source_root/.env.local" | /usr/bin/tail -n 1)
+  if [ -z "$control_plane_api_key" ]; then
+    echo "Missing CONTROL_PLANE_API_KEY in $source_root/.env.local" >&2
+    exit 1
+  fi
+  umask 077
+  printf '%s' "$control_plane_api_key" > "$runtime_root/secrets/control-plane.key"
+  chmod 600 "$runtime_root/secrets/control-plane.key"
+elif [ ! -s "$runtime_root/secrets/control-plane.key" ]; then
+  echo "No tunnel credential is available." >&2
+  exit 1
+fi
 
 if [ ! -f "$runtime_root/data/state.json" ] && [ -f "$source_root/data/state.json" ]; then
   cp "$source_root/data/state.json" "$runtime_root/data/state.json"
@@ -21,16 +57,44 @@ fi
 
 cp "$source_root/ops/macos/com.seaneschen.guitar-hole-count.server.plist" \
   "$launch_agents_root/com.seaneschen.guitar-hole-count.server.plist"
-cp "$source_root/ops/macos/com.seaneschen.guitar-hole-count.tunnel.plist" \
-  "$launch_agents_root/com.seaneschen.guitar-hole-count.tunnel.plist"
+cp "$source_root/ops/macos/com.seaneschen.guitar-hole-count.openai-tunnel.plist" \
+  "$launch_agents_root/com.seaneschen.guitar-hole-count.openai-tunnel.plist"
 
-launchctl bootout "$launch_domain/com.seaneschen.guitar-hole-count.tunnel" 2>/dev/null || true
+launchctl bootout "$launch_domain/com.seaneschen.guitar-hole-count.openai-tunnel" 2>/dev/null || true
 launchctl bootout "$launch_domain/com.seaneschen.guitar-hole-count.server" 2>/dev/null || true
 
-launchctl bootstrap "$launch_domain" \
+bootstrap_agent \
   "$launch_agents_root/com.seaneschen.guitar-hole-count.server.plist"
-launchctl bootstrap "$launch_domain" \
-  "$launch_agents_root/com.seaneschen.guitar-hole-count.tunnel.plist"
+
+attempt=0
+until /usr/bin/curl -fsS http://127.0.0.1:8787/ >/dev/null; do
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 30 ]; then
+    echo "MCP server did not become ready; see $runtime_root/data/server-launchd.log" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+bootstrap_agent \
+  "$launch_agents_root/com.seaneschen.guitar-hole-count.openai-tunnel.plist"
+
+attempt=0
+until /usr/bin/curl -fsS http://127.0.0.1:8788/readyz >/dev/null; do
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 30 ]; then
+    echo "OpenAI tunnel did not become ready; see $runtime_root/data/openai-tunnel-launchd.log" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+launchctl bootout "$launch_domain/com.seaneschen.guitar-hole-count.tunnel" 2>/dev/null || true
+legacy_plist="$launch_agents_root/com.seaneschen.guitar-hole-count.tunnel.plist"
+if [ -f "$legacy_plist" ]; then
+  mv "$legacy_plist" "$runtime_root/com.seaneschen.guitar-hole-count.tunnel.legacy.plist"
+fi
 
 echo "Guitar Hole Count background services installed."
 echo "Runtime: $runtime_root"
+echo "OpenAI tunnel: ready"

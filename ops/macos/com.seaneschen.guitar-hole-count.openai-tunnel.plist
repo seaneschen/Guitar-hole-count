@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.seaneschen.guitar-hole-count.openai-tunnel</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/.local/tunnel-client/tunnel-client</string>
+    <string>run</string>
+    <string>--profile</string>
+    <string>guitar-hole-count</string>
+    <string>--profile-dir</string>
+    <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/tunnel-client</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/data/openai-tunnel-launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/seaneschen/Library/Application Support/GuitarHoleCount/data/openai-tunnel-launchd.log</string>
+</dict>
+</plist>

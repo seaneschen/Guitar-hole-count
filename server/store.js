@@ -92,14 +92,21 @@ export class HoleCountStore {
   constructor({ dataDir = process.env.DATA_DIR || path.resolve("data") } = {}) {
     this.dataDir = path.resolve(dataDir);
     this.statePath = path.join(this.dataDir, "state.json");
+    this.backupPath = path.join(this.dataDir, "state.backup.json");
   }
 
   async #readStateFile() {
     try {
       return normalizeStoredState(JSON.parse(await readFile(this.statePath, "utf8")));
     } catch (error) {
-      if (error?.code === "ENOENT") return copyEmptyState();
-      throw error;
+      try {
+        return normalizeStoredState(JSON.parse(await readFile(this.backupPath, "utf8")));
+      } catch (backupError) {
+        if (error?.code === "ENOENT" && backupError?.code === "ENOENT") {
+          return copyEmptyState();
+        }
+        throw error;
+      }
     }
   }
 
@@ -112,8 +119,17 @@ export class HoleCountStore {
     await mkdir(this.dataDir, { recursive: true });
     const safe = normalizeStoredState(next);
     const tempPath = `${this.statePath}.${process.pid}.tmp`;
-    await writeFile(tempPath, `${JSON.stringify(safe, null, 2)}\n`, "utf8");
+    const backupTempPath = `${this.backupPath}.${process.pid}.tmp`;
+    const serialized = `${JSON.stringify(safe, null, 2)}\n`;
+    await writeFile(tempPath, serialized, "utf8");
     await rename(tempPath, this.statePath);
+    try {
+      await writeFile(backupTempPath, serialized, "utf8");
+      await rename(backupTempPath, this.backupPath);
+    } catch {
+      // The authoritative write already succeeded. A stale redundancy copy is
+      // preferable to reporting failure after committing the mutation.
+    }
     return safe;
   }
 

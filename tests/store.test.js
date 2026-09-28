@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { HoleCountStore } from "../server/store.js";
@@ -97,6 +97,21 @@ test("the current snapshot survives a fresh store instance", async () => {
 
   const persisted = JSON.parse(await readFile(path.join(dataDir, "state.json"), "utf8"));
   assert.deepEqual(persisted.counts.Fender, { starting: 5, remaining: 3 });
+});
+
+test("the redundant snapshot survives a corrupt primary state file", async () => {
+  await store.setMorningCount([{ label: "Fender", count: 5 }]);
+  await store.breakOut([{ label: "Fender", quantity: 2 }]);
+  await writeFile(path.join(dataDir, "state.json"), "not-json", "utf8");
+
+  const restartedStore = new HoleCountStore({ dataDir });
+  const snapshot = await restartedStore.snapshot();
+  assert.equal(snapshot.rows[0].remaining, 3);
+
+  const backup = JSON.parse(
+    await readFile(path.join(dataDir, "state.backup.json"), "utf8")
+  );
+  assert.deepEqual(backup.counts.Fender, { starting: 5, remaining: 3 });
 });
 
 test("duplicate labels are rejected case-insensitively", async () => {
