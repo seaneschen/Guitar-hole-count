@@ -9,6 +9,7 @@ import {
   ApiError,
   HoleCountApi,
   clampCount,
+  consumeSwipeDistance,
   installTokenFromHash,
   isProvisionedInstallPath,
   stepCarousel,
@@ -47,6 +48,9 @@ test("carousel math clamps counts and morning rows start at zero", () => {
   assert.equal(stepCarousel(4, "up"), 5);
   assert.equal(stepCarousel(0, "down"), 0);
   assert.equal(clampCount(5000), 999);
+  assert.deepEqual(consumeSwipeDistance(55), { steps: 2, remainder: 7 });
+  assert.deepEqual(consumeSwipeDistance(-50), { steps: -2, remainder: -2 });
+  assert.deepEqual(consumeSwipeDistance(12), { steps: 0, remainder: 12 });
   assert.deepEqual(
     zeroedMorningRows({ rows: [{ label: "Fender", remaining: 8 }] }),
     [{ label: "Fender", count: 0 }]
@@ -159,6 +163,7 @@ test("the server hosts the R1 creation and it wires the hardware events", async 
   assert.match(appJs, /addEventListener\("scrollUp"/);
   assert.match(appJs, /addEventListener\("scrollDown"/);
   assert.match(appJs, /addEventListener\("sideClick"/);
+  assert.match(appJs, /addEventListener\("touchmove", moveCarouselSwipe, \{ passive: false \}\)/);
   assert.match(appJs, /<button type="button" class="quantity"/);
   assert.doesNotMatch(appJs, /class="quantity" type="number"/);
   assert.match(appJs, /creationStorage\.secure/);
