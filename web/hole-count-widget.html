@@ -239,7 +239,7 @@
       }
       .entry-row input:focus { border-color: var(--muted); }
       .entry-row input[aria-invalid="true"] { border-color: var(--danger); }
-      .entry-row input[type="number"] {
+      .entry-count {
         font-variant-numeric: tabular-nums;
         text-align: center;
       }
@@ -369,6 +369,11 @@
       const editorError = document.querySelector("#editor-error");
       const saveMorning = document.querySelector("#save-morning");
 
+      const WALL_BOOKENDS = Object.freeze({
+        first: "Boutique",
+        last: "Misc. Acoustic",
+      });
+
       const emptySnapshot = () => ({
         initialized: false,
         rows: [],
@@ -383,6 +388,44 @@
       let undoState = null;
       let undoTimer = null;
       let statusTimer = null;
+
+      function labelKey(value) {
+        return String(value ?? "").trim().toLocaleLowerCase();
+      }
+
+      function configureNumericInput(input, { selectAll = false } = {}) {
+        input.type = "text";
+        input.inputMode = "numeric";
+        input.pattern = "[0-9]*";
+        input.autocomplete = "off";
+        input.enterKeyHint = "done";
+
+        const selectValue = () => {
+          if (!selectAll && input.value !== "0") return;
+          requestAnimationFrame(() => input.setSelectionRange(0, input.value.length));
+        };
+
+        input.addEventListener("focus", selectValue);
+        input.addEventListener("pointerup", selectValue);
+      }
+
+      function morningEditorRows(rows) {
+        const firstKey = labelKey(WALL_BOOKENDS.first);
+        const lastKey = labelKey(WALL_BOOKENDS.last);
+        const middle = [];
+
+        for (const row of rows ?? []) {
+          const key = labelKey(row?.label);
+          if (!key || key === firstKey || key === lastKey) continue;
+          middle.push({ label: String(row.label), count: 0 });
+        }
+
+        return [
+          { label: WALL_BOOKENDS.first, count: 0 },
+          ...middle,
+          { label: WALL_BOOKENDS.last, count: 0 },
+        ];
+      }
 
       function showOnly(element) {
         [countView, emptyView, editorView].forEach((view) => view.classList.add("hidden"));
@@ -452,14 +495,10 @@
           const remaining = document.createElement("input");
           remaining.className = "remaining-input";
           if (flashLabel === row.label) remaining.classList.add("flash");
-          remaining.type = "number";
-          remaining.min = "0";
-          remaining.step = "1";
-          remaining.inputMode = "numeric";
           remaining.value = row.remaining;
           remaining.disabled = busy;
           remaining.setAttribute("aria-label", `${row.label} remaining holes`);
-          remaining.addEventListener("focus", () => remaining.select());
+          configureNumericInput(remaining, { selectAll: true });
           remaining.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;
             event.preventDefault();
@@ -483,23 +522,37 @@
         renderUndo();
       }
 
-      function addEditorRow(label = "", count = "") {
+      function addEditorRow(label = "", count = "", before = null) {
         const row = document.createElement("div");
         row.className = "entry-row";
         row.innerHTML = `
           <input class="entry-label" type="text" placeholder="Brand / category" aria-label="Brand or category" />
-          <input class="entry-count" type="number" min="0" step="1" inputmode="numeric" placeholder="0" aria-label="Hole count" />
+          <input class="entry-count" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" placeholder="0" aria-label="Hole count" />
           <button class="remove-row" type="button" aria-label="Remove row">×</button>
         `;
         row.querySelector(".entry-label").value = label;
-        row.querySelector(".entry-count").value = count;
+        const countInput = row.querySelector(".entry-count");
+        countInput.value = count;
+        configureNumericInput(countInput);
         row.querySelector(".remove-row").addEventListener("click", () => {
           row.remove();
-          if (!entryList.children.length) addEditorRow();
+          if (!entryList.children.length) {
+            for (const item of morningEditorRows([])) addEditorRow(item.label, item.count);
+          }
           updateEditorTotal();
         });
-        row.querySelector(".entry-count").addEventListener("input", updateEditorTotal);
-        entryList.appendChild(row);
+        countInput.addEventListener("input", updateEditorTotal);
+        entryList.insertBefore(row, before);
+        return row;
+      }
+
+      function addBlankEditorRow() {
+        const lastKey = labelKey(WALL_BOOKENDS.last);
+        const lastRow = [...entryList.querySelectorAll(".entry-row")].find(
+          (row) => labelKey(row.querySelector(".entry-label")?.value) === lastKey
+        );
+        const row = addEditorRow("", "", lastRow ?? null);
+        row.querySelector(".entry-label").focus();
       }
 
       function updateEditorTotal() {
@@ -515,14 +568,10 @@
         clearUndo();
         entryList.replaceChildren();
         editorError.textContent = "";
-        if (snapshot.rows.length) {
-          for (const row of snapshot.rows) addEditorRow(row.label, 0);
-        } else {
-          addEditorRow();
-        }
+        for (const row of morningEditorRows(snapshot.rows)) addEditorRow(row.label, row.count);
         updateEditorTotal();
         showOnly(editorView);
-        setTimeout(() => entryList.querySelector(".entry-count, input")?.focus(), 0);
+        setTimeout(() => entryList.querySelector(".entry-count")?.focus(), 0);
       }
 
       function clearEditorValidity() {
@@ -612,7 +661,7 @@
       const bridgeReady = hasHost
         ? (async () => {
             await rpcRequest("ui/initialize", {
-              appInfo: { name: "guitar-hole-count-card", version: "1.1.0" },
+              appInfo: { name: "guitar-hole-count-card", version: "1.2.0" },
               appCapabilities: {},
               protocolVersion: "2026-01-26",
             });
@@ -812,7 +861,7 @@
 
       document.querySelector("#new-morning").addEventListener("click", openEditor);
       document.querySelector("#start-morning").addEventListener("click", openEditor);
-      document.querySelector("#add-row").addEventListener("click", () => addEditorRow());
+      document.querySelector("#add-row").addEventListener("click", addBlankEditorRow);
       document.querySelector("#clear-counts").addEventListener("click", () => {
         for (const input of entryList.querySelectorAll(".entry-count")) input.value = 0;
         updateEditorTotal();

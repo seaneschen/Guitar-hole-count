@@ -110,10 +110,44 @@ export function toSnapshot(state) {
 export class HoleCountStore {
   #mutationTail = Promise.resolve();
 
-  constructor({ dataDir = process.env.DATA_DIR || path.resolve("data") } = {}) {
+  constructor({
+    dataDir = process.env.DATA_DIR || path.resolve("data"),
+    bookends = {},
+  } = {}) {
     this.dataDir = path.resolve(dataDir);
     this.statePath = path.join(this.dataDir, "state.json");
     this.backupPath = path.join(this.dataDir, "state.backup.json");
+    this.bookends = {
+      first: cleanLabel(bookends.first),
+      last: cleanLabel(bookends.last),
+    };
+  }
+
+  #withBookends(counts) {
+    const firstKey = this.bookends.first.toLocaleLowerCase();
+    const lastKey = this.bookends.last.toLocaleLowerCase();
+    if (!firstKey && !lastKey) return counts;
+    if (firstKey && firstKey === lastKey) {
+      throw new Error("The first and last wall categories must be different.");
+    }
+
+    const entries = Object.entries(counts);
+    const findCount = (key) =>
+      entries.find(([label]) => label.toLocaleLowerCase() === key)?.[1];
+    const ordered = {};
+
+    if (firstKey) {
+      ordered[this.bookends.first] = findCount(firstKey) ?? { starting: 0, remaining: 0 };
+    }
+    for (const [label, count] of entries) {
+      const key = label.toLocaleLowerCase();
+      if (key === firstKey || key === lastKey) continue;
+      ordered[label] = count;
+    }
+    if (lastKey) {
+      ordered[this.bookends.last] = findCount(lastKey) ?? { starting: 0, remaining: 0 };
+    }
+    return ordered;
   }
 
   async #readStateFile() {
@@ -164,6 +198,19 @@ export class HoleCountStore {
     return toSnapshot(await this.readState());
   }
 
+  ensureBookends() {
+    return this.#mutate(async () => {
+      const state = await this.#readStateFile();
+      if (Object.keys(state.counts).length === 0) return state;
+      const counts = this.#withBookends(state.counts);
+      if (JSON.stringify(counts) === JSON.stringify(state.counts)) return state;
+      state.counts = counts;
+      state.updatedAt = new Date().toISOString();
+      state.revision += 1;
+      return this.#writeState(state);
+    });
+  }
+
   setMorningCount(entries, { expectedRevision } = {}) {
     return this.#mutate(async () => {
       if (!Array.isArray(entries) || entries.length === 0) {
@@ -188,7 +235,7 @@ export class HoleCountStore {
       const current = await this.#readStateFile();
       assertExpectedRevision(current, expectedRevision);
       return this.#writeState({
-        counts,
+        counts: this.#withBookends(counts),
         updatedAt: new Date().toISOString(),
         revision: current.revision + 1,
       });

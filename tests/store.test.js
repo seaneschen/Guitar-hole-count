@@ -37,6 +37,40 @@ test("a morning count replaces the snapshot and resets breakout progress", async
   assert.deepEqual(snapshot.totals, { starting: 6, remaining: 6, brokenOut: 0 });
 });
 
+test("configured wall bookends are permanent without resetting current progress", async () => {
+  await store.setMorningCount([
+    { label: "Fender", count: 5 },
+    { label: "Ibanez", count: 4 },
+  ]);
+  await store.breakOut([{ label: "Fender", quantity: 2 }]);
+  const priorRevision = (await store.snapshot()).revision;
+
+  const orderedStore = new HoleCountStore({
+    dataDir,
+    bookends: { first: "Boutique", last: "Misc. Acoustic" },
+  });
+  await orderedStore.ensureBookends();
+  let snapshot = await orderedStore.snapshot();
+  assert.deepEqual(snapshot.rows, [
+    { label: "Boutique", starting: 0, remaining: 0, brokenOut: 0 },
+    { label: "Fender", starting: 5, remaining: 3, brokenOut: 2 },
+    { label: "Ibanez", starting: 4, remaining: 4, brokenOut: 0 },
+    { label: "Misc. Acoustic", starting: 0, remaining: 0, brokenOut: 0 },
+  ]);
+  assert.equal(snapshot.revision, priorRevision + 1);
+
+  await orderedStore.ensureBookends();
+  assert.equal((await orderedStore.snapshot()).revision, snapshot.revision);
+
+  await orderedStore.setMorningCount([{ label: "Gibson", count: 7 }]);
+  snapshot = await orderedStore.snapshot();
+  assert.deepEqual(snapshot.rows, [
+    { label: "Boutique", starting: 0, remaining: 0, brokenOut: 0 },
+    { label: "Gibson", starting: 7, remaining: 7, brokenOut: 0 },
+    { label: "Misc. Acoustic", starting: 0, remaining: 0, brokenOut: 0 },
+  ]);
+});
+
 test("one breakout call updates multiple categories atomically", async () => {
   await store.setMorningCount([
     { label: "Fender", count: 17 },

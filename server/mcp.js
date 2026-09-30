@@ -7,7 +7,7 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-export const WIDGET_URI = "ui://guitar-hole-count/v3.html";
+export const WIDGET_URI = "ui://guitar-hole-count/v4.html";
 
 const rowSchema = z.object({
   label: z.string(),
@@ -63,7 +63,7 @@ async function mutate(store, action, message) {
 export function createHoleCountMcpServer({ store, widgetPath }) {
   const widgetHtml = readFileSync(widgetPath, "utf8");
   const server = new McpServer(
-    { name: "guitar-hole-count", version: "1.10.0" },
+    { name: "guitar-hole-count", version: "1.11.0" },
     {
       instructions:
         "This app tracks one current guitar-wall snapshot. Use break_out_guitars for real breakouts, correct_hole_count when an observed count was entered incorrectly, and adjust_hole_balance to undo or correct breakout progress. After a successful model-initiated mutation, call show_hole_count to display the updated interactive card. Never invent categories or allow a balance below zero.",

@@ -15,7 +15,10 @@ snapshot on the Mac mini.
 - The ChatGPT card has a one-tap `−` control with an immediate optimistic update.
 - Remaining counts stay editable; direct corrections preserve legitimate breakout progress.
 - The most recent decrement offers a short-lived Undo action.
-- The card includes a focused morning-count editor.
+- The card includes a focused morning-count editor with iPhone numeric-keypad
+  inputs; tapping a zeroed count selects the zero so the first digit replaces it.
+- `Boutique` and `Misc. Acoustic` remain fixed as the first and last wall
+  categories while the saved middle order is preserved.
 - The r1 uses its wheel as a focused quantity carousel and retains the same
   one-tap `−` breakout control.
 - Revision checks prevent an r1 correction from overwriting a newer ChatGPT

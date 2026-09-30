@@ -6,7 +6,11 @@ import { HoleCountStore } from "./store.js";
 const port = Number(process.env.PORT ?? 8787);
 const host = process.env.HOST ?? "127.0.0.1";
 const dataDir = process.env.DATA_DIR || path.resolve("data");
-const store = new HoleCountStore({ dataDir });
+const store = new HoleCountStore({
+  dataDir,
+  bookends: { first: "Boutique", last: "Misc. Acoustic" },
+});
+await store.ensureBookends();
 const r1ApiToken = process.env.R1_API_TOKEN_FILE
   ? readFileSync(process.env.R1_API_TOKEN_FILE, "utf8").trim()
   : process.env.R1_API_TOKEN;
