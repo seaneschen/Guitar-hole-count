@@ -35,6 +35,8 @@ State is stored in `data/state.json`, or in `$DATA_DIR/state.json` when `DATA_DI
 - `adjust_hole_balance` — applies signed corrections to one or more categories.
 
 Only `show_hole_count` links to the UI resource. Mutations return the same authoritative structured snapshot, allowing the mounted widget to update without remounting.
+The server keeps the previous widget URI registered as a compatibility alias so
+an already-connected ChatGPT client can still resolve the card after an update.
 
 ## Run on this Mac
 

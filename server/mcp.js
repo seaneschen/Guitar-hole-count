@@ -8,6 +8,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 export const WIDGET_URI = "ui://guitar-hole-count/v4.html";
+export const LEGACY_WIDGET_URIS = Object.freeze([
+  "ui://guitar-hole-count/v3.html",
+]);
 
 const rowSchema = z.object({
   label: z.string(),
@@ -63,37 +66,39 @@ async function mutate(store, action, message) {
 export function createHoleCountMcpServer({ store, widgetPath }) {
   const widgetHtml = readFileSync(widgetPath, "utf8");
   const server = new McpServer(
-    { name: "guitar-hole-count", version: "1.11.0" },
+    { name: "guitar-hole-count", version: "1.11.1" },
     {
       instructions:
         "This app tracks one current guitar-wall snapshot. Use break_out_guitars for real breakouts, correct_hole_count when an observed count was entered incorrectly, and adjust_hole_balance to undo or correct breakout progress. After a successful model-initiated mutation, call show_hole_count to display the updated interactive card. Never invent categories or allow a balance below zero.",
     }
   );
 
-  registerAppResource(
-    server,
-    "guitar-hole-count-card",
-    WIDGET_URI,
-    {},
-    async () => ({
-      contents: [
-        {
-          uri: WIDGET_URI,
-          mimeType: RESOURCE_MIME_TYPE,
-          text: widgetHtml,
-          _meta: {
-            ui: {
-              prefersBorder: true,
-              csp: { connectDomains: [], resourceDomains: [] },
+  for (const [index, uri] of [WIDGET_URI, ...LEGACY_WIDGET_URIS].entries()) {
+    registerAppResource(
+      server,
+      index === 0 ? "guitar-hole-count-card" : `guitar-hole-count-card-legacy-${index}`,
+      uri,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: widgetHtml,
+            _meta: {
+              ui: {
+                prefersBorder: true,
+                csp: { connectDomains: [], resourceDomains: [] },
+              },
+              "openai/widgetDescription":
+                "Interactive Guitar Wall card with editable remaining counts, one-tap breakout and undo controls, and a zeroed morning-count editor.",
+              "openai/widgetPrefersBorder": true,
             },
-            "openai/widgetDescription":
-              "Interactive Guitar Wall card with editable remaining counts, one-tap breakout and undo controls, and a zeroed morning-count editor.",
-            "openai/widgetPrefersBorder": true,
           },
-        },
-      ],
-    })
-  );
+        ],
+      })
+    );
+  }
 
   registerAppTool(
     server,

@@ -7,7 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createHttpServer } from "../server/http.js";
 import { HoleCountStore } from "../server/store.js";
-import { WIDGET_URI } from "../server/mcp.js";
+import { LEGACY_WIDGET_URIS, WIDGET_URI } from "../server/mcp.js";
 
 let client;
 let dataDir;
@@ -52,10 +52,13 @@ test("the MCP endpoint advertises the five focused tools and UI only on show", a
 });
 
 test("the widget resource is registered with the MCP Apps MIME type", async () => {
-  const result = await client.readResource({ uri: WIDGET_URI });
-  assert.equal(result.contents[0].mimeType, "text/html;profile=mcp-app");
-  assert.match(result.contents[0].text, /ui\/notifications\/tool-result/);
-  assert.match(result.contents[0].text, /tools\/call/);
+  for (const uri of [WIDGET_URI, ...LEGACY_WIDGET_URIS]) {
+    const result = await client.readResource({ uri });
+    assert.equal(result.contents[0].uri, uri);
+    assert.equal(result.contents[0].mimeType, "text/html;profile=mcp-app");
+    assert.match(result.contents[0].text, /ui\/notifications\/tool-result/);
+    assert.match(result.contents[0].text, /tools\/call/);
+  }
 });
 
 test("tools mutate and return the authoritative structured snapshot", async () => {
